@@ -1,0 +1,21 @@
+# Core Libraries
+instructor>=0.4.0
+openai>=1.0.0
+pydantic>=2.0.0
+sqlalchemy>=2.0.0
+sqlparse>=0.4.0
+
+# Database Drivers
+psycopg2-binary>=2.9.0
+pymysql>=1.1.0
+
+# Development
+pytest>=7.4.0
+python-dotenv>=1.0.0
+click>=8.1.0
+rich>=13.0.0
+
+# Optional
+fastapi>=0.104.0
+streamlit>=1.28.0
+uvicorn>=0.24.0
