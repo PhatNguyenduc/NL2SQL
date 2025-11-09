@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-🚀 Chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries cho PostgreSQL và MySQL một cách chính xác và an toàn.🚀 Chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries cho PostgreSQL và MySQL một cách chính xác và an toàn.
+🚀 Chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries cho PostgreSQL và MySQL một cách chính xác và an toàn.
 
 ## 🎯 Modes## ✨ Tính năng
 
@@ -634,38 +634,3 @@ Contributions are welcome! Please:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- OpenAI for GPT API
-- FastAPI for the excellent web framework
-- SQLAlchemy for database abstraction
-- All contributors and users
-
----
-
-## 📞 Support
-
-- 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/yourusername/nl2sql/issues)
-- 💬 [Discussions](https://github.com/yourusername/nl2sql/discussions)
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Redis/database-backed session storage
-- [ ] Authentication & authorization
-- [ ] Rate limiting
-- [ ] WebSocket support for streaming responses
-- [ ] Query result caching
-- [ ] Multiple LLM providers (Claude, Llama, etc.)
-- [ ] Query optimization suggestions
-- [ ] Data visualization integration
-- [ ] Multi-language support
-
----
-
-**Made with ❤️ for developers who love natural language interfaces**
