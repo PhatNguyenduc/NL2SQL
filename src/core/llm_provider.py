@@ -171,8 +171,16 @@ def create_llm_config_from_env() -> LLMConfig:
     if not api_key:
         raise ValueError(f"API key not found. Set one of: {', '.join(env_keys)}")
     
-    # Get model (use env var or default)
-    model = os.getenv("LLM_MODEL") or os.getenv("OPENAI_MODEL") or get_default_model(provider)
+    # Get model (use provider-specific env var or default)
+    model_env_map = {
+        LLMProvider.OPENAI: "OPENAI_MODEL",
+        LLMProvider.GEMINI: "GEMINI_MODEL",
+        LLMProvider.OPENROUTER: "OPENROUTER_MODEL",
+        LLMProvider.ANTHROPIC: "ANTHROPIC_MODEL",
+        LLMProvider.AZURE_OPENAI: "AZURE_OPENAI_DEPLOYMENT"
+    }
+    
+    model = os.getenv("LLM_MODEL") or os.getenv(model_env_map.get(provider, "")) or get_default_model(provider)
     
     # Get optional settings
     base_url = os.getenv("LLM_BASE_URL")

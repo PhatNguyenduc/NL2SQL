@@ -16,6 +16,7 @@
 - 🐳 **Full Docker Stack**: MySQL + API + phpMyAdmin trong 1 lệnh
 - 🚀 **REST API**: FastAPI với Swagger docs tự động
 - 💬 **Chat Interface**: Session-based conversation với history
+- 🎨 **Streamlit UI**: Interactive web demo (frontend/streamlit_app.py)
 - 🛡️ **An toàn tuyệt đối**: Chỉ SELECT, chặn mọi thao tác nguy hiểm
 - 📊 **Schema Auto-load**: Tự động phân tích cấu trúc database
 - ⚡ **Few-shot Learning**: Tăng độ chính xác với examples
@@ -87,6 +88,16 @@ OPENROUTER_API_KEY=sk-or-your-key-here  # https://openrouter.ai/keys
 - 💾 **MySQL**: localhost:3307 (root/admin)
 
 ### 4️⃣ Test API
+
+**Option A: Use Streamlit UI** (Recommended)
+
+```powershell
+cd frontend
+streamlit run streamlit_app.py
+# Open http://localhost:8501 và chat!
+```
+
+**Option B: Use cURL**
 
 ```powershell
 # Health check
