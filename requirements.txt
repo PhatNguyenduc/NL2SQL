@@ -17,7 +17,26 @@ rich>=13.0.0
 Faker>=37.4.0
 mysql-connector-python>=9.3.0
 
-# Optional
+# API Server
 fastapi>=0.104.0
-streamlit>=1.28.0
 uvicorn>=0.24.0
+
+# Optional UI
+streamlit>=1.28.0
+
+# ============================================
+# Optional LLM Providers
+# ============================================
+# Install based on which providers you want to use:
+
+# For Anthropic Claude (claude-3-5-sonnet, etc.)
+# anthropic>=0.18.0
+
+# For Google Gemini (alternative to OpenAI-compatible endpoint)
+# google-generativeai>=0.3.0
+
+# For Azure OpenAI
+# azure-identity>=1.15.0
+
+# Note: OpenRouter and Gemini (via OpenAI-compatible endpoint) 
+# work with the base openai package, no additional deps needed

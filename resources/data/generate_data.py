@@ -34,7 +34,8 @@ fake = Faker()
 
 def get_db_connection():
     return mysql.connector.connect(
-        host='localhost',
+        host='127.0.0.1',
+        port=3307,
         user='root',
         password='admin',
         database='ecommerce'

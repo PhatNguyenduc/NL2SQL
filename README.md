@@ -1,483 +1,491 @@
-# NL2SQL - Natural Language to SQL Converter# NL2SQL - Natural Language to SQL Converter
+# 🔄 NL2SQL - Natural Language to SQL Converter
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-🚀 Chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries cho PostgreSQL và MySQL một cách chính xác và an toàn.
-
-## 🎯 Modes## ✨ Tính năng
-
-**1. Backend Server** (Recommended) - REST API với chat interface cho frontend integration - ✅ **Chuyển đổi thông minh**: Sử dụng OpenAI GPT để chuyển câu hỏi tự nhiên thành SQL
-
-**2. CLI Tool** - Command-line interface để sử dụng trực tiếp- ✅ **Hỗ trợ đa database**: PostgreSQL và MySQL
-
-- ✅ **Tự động phân tích schema**: Trích xuất và hiểu cấu trúc database
-
-## ✨ Tính năng- ✅ **An toàn tuyệt đối**: Chỉ cho phép SELECT, chặn các thao tác nguy hiểm
-
-- ✅ **Few-shot learning**: Tăng độ chính xác với examples
-
-### Core Features- ✅ **CLI tiện lợi**: Command-line interface dễ sử dụng
-
-- ✅ **Chuyển đổi thông minh**: Sử dụng OpenAI GPT để chuyển câu hỏi tự nhiên thành SQL- ✅ **Python API**: Tích hợp dễ dàng vào ứng dụng
-
-- ✅ **Hỗ trợ đa database**: PostgreSQL và MySQL- ✅ **Format đẹp**: SQL được format chuẩn, dễ đọc
-
-- ✅ **Tự động phân tích schema**: Trích xuất và hiểu cấu trúc database- ✅ **Execute & Results**: Thực thi và hiển thị kết quả trực quan
-
-- ✅ **An toàn tuyệt đối**: Chỉ cho phép SELECT, chặn các thao tác nguy hiểm
-
-- ✅ **Few-shot learning**: Tăng độ chính xác với examples## 📦 Cài đặt nhanh
-
-- ✅ **Format đẹp**: SQL được format chuẩn, dễ đọc
-
-- ✅ **Execute & Results**: Thực thi và hiển thị kết quả trực quan```bash
-
-# Clone project
-
-### Backend API Featuresgit clone https://github.com/yourusername/nl2sql.git
-
-- 🚀 **REST API**: FastAPI server với 9 endpointscd nl2sql
-
-- 💬 **Chat Interface**: Session-based conversation với message history
-
-- 🐳 **Docker Support**: Containerized deployment với docker-compose# Tạo virtual environment
-
-- 📊 **Interactive Docs**: Swagger UI và ReDoc tự độngpython -m venv venv
-
-- 🔄 **Batch Processing**: Xử lý nhiều questions cùng lúc.\venv\Scripts\Activate.ps1 # Windows PowerShell
-
-- ⚡ **High Performance**: Async/await architecture
-
-# Cài đặt dependencies
-
----pip install -r requirements.txt
-
-## 🚀 Quick Start# Cài đặt package
-
-pip install -e .
-
-### Option 1: Docker (Recommended for Backend Server)
-
-# Cấu hình environment variables
-
-````bashcopy .env.example .env
-
-# 1. Clone repository# Chỉnh sửa .env với API key và database URL
-
-git clone https://github.com/yourusername/nl2sql.git```
-
-cd nl2sql
-
-## 🚀 Sử dụng nhanh
-
-# 2. Tạo .env file
-
-copy .env.example .env### CLI
-
-# Sửa .env với DATABASE_URL và OPENAI_API_KEY của bạn
-
-```bash
-
-# 3. Start all services (API + PostgreSQL + pgAdmin)# Test kết nối database
-
-docker-compose up -dnl2sql test
-
-
-
-# 4. Check status# Xem schema
-
-docker-compose psnl2sql schema
-
-
-
-# Server chạy tại http://localhost:8000# Tạo SQL từ câu hỏi
-
-# Interactive docs: http://localhost:8000/docsnl2sql query "Show me all users"
-
-````
-
-# Tạo và thực thi SQL
-
-**Test API:**nl2sql query "How many orders were placed last month?" --execute
-
-```bash
-
-# Health check# Xử lý hàng loạt
-
-curl http://localhost:8000/healthnl2sql batch -i questions.txt -o results.json --execute
-
-```
-
-# Send a question
-
-curl -X POST http://localhost:8000/chat -H "Content-Type: application/json" -d "{\"message\": \"How many users?\", \"execute_query\": true}"### Python API
-
-````
-
-```python
-
-### Option 2: Local Developmentfrom src.core.converter import NL2SQLConverter
-
-from src.models.sql_query import DatabaseType
-
-```powershell
-
-# 1. Clone và setup# Khởi tạo converter
-
-git clone https://github.com/yourusername/nl2sql.gitconverter = NL2SQLConverter(
-
-cd nl2sql    connection_string="postgresql://user:pass@localhost/db",
-
-    database_type=DatabaseType.POSTGRESQL,
-
-# 2. Tạo virtual environment    enable_few_shot=True
-
-python -m venv venv)
-
-.\venv\Scripts\Activate.ps1
-
-# Tạo SQL
-
-# 3. Cài đặt dependenciessql_query = converter.generate_sql("Show me all users registered today")
-
-pip install -r requirements.txtprint(sql_query.query)
-
-pip install -e .print(f"Confidence: {sql_query.confidence:.2%}")
-
-
-
-# 4. Cấu hình .env# Tạo và thực thi
-
-copy .env.example .envsql_query, result = converter.generate_and_execute("What's the average order value?")
-
-# DATABASE_URL=postgresql://user:password@localhost:5432/dbnameif result.success:
-
-# OPENAI_API_KEY=sk-your-key-here    print(f"Result: {result.rows}")
-
-
-
-# 5a. Chạy Backend Serverconverter.close()
-
-python main.py```
-
-
-
-# 5b. Hoặc sử dụng CLI## 📚 Documentation
-
-nl2sql test
-
-nl2sql ask "How many users?"- [Installation Guide](docs/installation.md) - Hướng dẫn cài đặt chi tiết
-
-```- [Usage Guide](docs/usage.md) - Hướng dẫn sử dụng
-
-- [Configuration](docs/configuration.md) - Cấu hình nâng cao
-
----- [Examples](examples/) - Các ví dụ mẫu
-
-
-
-## 🎮 Usage## 🔧 Tech Stack
-
-
-
-### Backend Server Mode### Core
-
-- **instructor** - Structured outputs từ LLMs
-
-**Start Server:**- **openai** - OpenAI API client
-
-```bash- **pydantic** - Data validation
-
-# With Docker- **sqlalchemy** - Database abstraction
-
-docker-compose up -d- **sqlparse** - SQL formatting
-
-
-
-# Local development### Database
-
-python main.py- **psycopg2-binary** - PostgreSQL driver
-
-```- **pymysql** - MySQL driver
-
-
-
-**API Endpoints:**### CLI & UI
-
-```bash- **click** - CLI framework
-
-# Health check- **rich** - Terminal formatting
-
-GET http://localhost:8000/health
-
-### Development
-
-# Chat (generate SQL + execute)- **pytest** - Testing framework
-
-POST http://localhost:8000/chat- **python-dotenv** - Environment variables
-
-{
-
-  "message": "Show me all users registered last month",## 📁 Cấu trúc Project
-
-  "execute_query": true,
-
-  "session_id": "optional-session-id"```
-
-}nl2sql/
-
-├── src/
-
-# Batch processing│   ├── core/               # Core modules
-
-POST http://localhost:8000/chat/batch│   │   ├── converter.py    # Main NL2SQL converter
-
-{│   │   ├── schema_extractor.py
-
-  "messages": ["How many users?", "Show top 10 products"],│   │   └── query_executor.py
-
-  "execute_queries": false│   ├── models/             # Pydantic models
-
-}│   ├── prompts/            # LLM prompts
-
-│   ├── utils/              # Utilities
-
-# Get database schema│   └── cli.py              # CLI interface
-
-GET http://localhost:8000/schema├── tests/                  # Tests
-
-├── examples/               # Usage examples
-
-# Conversation history├── docs/                   # Documentation
-
-POST http://localhost:8000/conversation/history└── requirements.txt
-
-{```
-
-  "session_id": "session-123",
-
-  "limit": 50## 🎯 Ví dụ
-
-}
-
-### Các loại câu hỏi được hỗ trợ
-
-# List active sessions
-
-GET http://localhost:8000/sessions**Aggregations:**
-
-````
-
-"How many users do we have?"
-
-**Interactive Documentation:**"What's the average order value?"
-
-- **Swagger UI**: http://localhost:8000/docs"Sum of all sales this month"
-
-- **ReDoc**: http://localhost:8000/redoc```
-
-**Frontend Integration Example (JavaScript):\*\***Filtering:\*\*
-
-`javascript`
-
-async function askQuestion(question) {"Show users older than 25"
-
-const response = await fetch('http://localhost:8000/chat', {"Find orders placed last week"
-
-    method: 'POST',"Products with price above $100"
-
-    headers: { 'Content-Type': 'application/json' },```
-
-    body: JSON.stringify({
-
-      message: question,**Joins:**
-
-      execute_query: true,```
-
-      temperature: 0.1"Show orders with customer information"
-
-    })"List products with their categories"
-
-});"Users with their order history"
-
-````
-
-const data = await response.json();
-
-console.log('SQL:', data.sql_generation.query);**Sorting:**
-
-console.log('Results:', data.execution?.rows);```
-
-return data;"Top 10 customers by spending"
-
-}"Latest 5 orders"
-
-"Products sorted by price descending"
-
-// Usage```
-
-askQuestion("Show me all users registered today");
-
-```**Grouping:**
-
-````
-
-### CLI Mode"Revenue by month"
-
-"Order count by status"
-
-````bash"Average rating by product category"
-
-# Test kết nối database```
-
-nl2sql test
-
-## 🛡️ Bảo mật
-
-# Xem schema
-
-nl2sql schema- ✅ Chỉ cho phép SELECT queries
-
-- ✅ Chặn tất cả các thao tác thay đổi dữ liệu (INSERT, UPDATE, DELETE, DROP, etc.)
-
-# Generate SQL (không execute)- ✅ Validation SQL syntax
-
-nl2sql ask "Có bao nhiêu người dùng?"- ✅ Chống SQL injection
-
-- ✅ Tự động thêm LIMIT để tránh queries quá lớn
-
-# Generate và execute
-
-nl2sql ask "Hiển thị 10 đơn hàng gần nhất" --execute## 🧪 Testing
-
-
-
-# Batch processing```bash
-
-nl2sql batch questions.txt --output results.json# Chạy unit tests
-
-pytest tests/test_validation.py -v
-
-# Interactive mode
-
-nl2sql interactive# Chạy integration tests (cần database và API key)
-
-```export DATABASE_URL="postgresql://user:pass@localhost/db"
-
-export OPENAI_API_KEY="your-key"
-
-### Python APIpytest tests/test_converter.py -v -m integration
-
-
-
-```python# Chạy tất cả tests với coverage
-
-from src.core.converter import NL2SQLConverterpytest tests/ --cov=src --cov-report=html
-
-from src.models.sql_query import DatabaseConfig```
-
-
-
-# Setup## 🤝 Contributing
-
-config = DatabaseConfig(
-
-    host="localhost",Contributions are welcome! Please feel free to submit a Pull Request.
-
-    port=5432,
-
-    database="mydb",1. Fork the project
-
-    username="user",2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-
-    password="pass",3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-
-    db_type="postgresql"4. Push to the branch (`git push origin feature/AmazingFeature`)
-
-)5. Open a Pull Request
-
-
-
-converter = NL2SQLConverter(config)## 📝 License
-
-
-
-# Generate SQLThis project is licensed under the MIT License - see the LICENSE file for details.
-
-result = converter.generate_sql(
-
-    "How many active users are there?",## 🙏 Acknowledgments
-
-    temperature=0.1
-
-)- OpenAI for GPT models
-
-- Instructor library for structured outputs
-
-print(f"SQL: {result.query}")- SQLAlchemy for database abstraction
-
-print(f"Confidence: {result.confidence}")- Rich for beautiful terminal output
-
-
-
-# Generate and execute## 📮 Contact
-
-result = converter.generate_and_execute(
-
-    "Show me top 10 products by sales"Your Name - [@yourusername](https://twitter.com/yourusername)
-
-)
-
-Project Link: [https://github.com/yourusername/nl2sql](https://github.com/yourusername/nl2sql)
-
-if result.execution_result.success:
-
-    print(f"Found {result.execution_result.row_count} rows")---
-
-    for row in result.execution_result.rows:
-
-        print(row)⭐ If you find this project useful, please give it a star!
-````
+🚀 **Backend API** chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries cho MySQL một cách chính xác, an toàn và thông minh.
 
 ---
 
-## 🏗️ Architecture
+## ✨ Tính năng nổi bật
 
-### Backend Server Architecture
+- 🤖 **Multi-LLM Provider**: OpenAI, Gemini (FREE), OpenRouter, Claude, Azure OpenAI
+- 🔄 **Auto Fallback**: Tự động chuyển provider nếu không tìm thấy API key
+- 🐳 **Full Docker Stack**: MySQL + API + phpMyAdmin trong 1 lệnh
+- 🚀 **REST API**: FastAPI với Swagger docs tự động
+- 💬 **Chat Interface**: Session-based conversation với history
+- 🛡️ **An toàn tuyệt đối**: Chỉ SELECT, chặn mọi thao tác nguy hiểm
+- 📊 **Schema Auto-load**: Tự động phân tích cấu trúc database
+- ⚡ **Few-shot Learning**: Tăng độ chính xác với examples
+- 🎯 **Sample Data**: 24 tables ecommerce data sẵn sàng
+
+---
+
+## 🚀 Quick Start (5 phút)
+
+### 1️⃣ Clone & Setup
+
+```powershell
+# Clone repository
+git clone https://github.com/PhatNguyenduc/NL2SQL.git
+cd NL2SQL
+
+# Copy và config .env
+copy .env.example .env
+# Chỉnh sửa .env với API keys (xem bước 2)
+```
+
+### 2️⃣ Chọn LLM Provider
+
+**Option A: Gemini (FREE - Recommended)** 🎁
+
+```bash
+# .env
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-key-here  # FREE tại: https://aistudio.google.com/apikey
+```
+
+**Option B: OpenAI**
+
+```bash
+# .env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+```
+
+**Option C: OpenRouter** (100+ models)
+
+```bash
+# .env
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-your-key-here  # https://openrouter.ai/keys
+```
+
+> 📚 **Chi tiết providers**: Xem [docs/llm_providers.md](docs/llm_providers.md)
+
+### 3️⃣ Chạy Full Stack với Docker
+
+```powershell
+# Setup tự động: MySQL + API + Sample Data
+.\setup_docker.ps1
+
+# ✅ Script sẽ:
+# - Kiểm tra Docker
+# - Validate API keys (auto fallback nếu cần)
+# - Start MySQL (port 3307), API (port 8000), phpMyAdmin (port 8080)
+# - Import schema + Generate 500 users, 1000 products, 2000 orders
+# - Test health check
+```
+
+**Services Ready:**
+
+- 🔗 **API**: http://localhost:8000
+- 📖 **API Docs**: http://localhost:8000/docs
+- 🗄️ **phpMyAdmin**: http://localhost:8080
+- 💾 **MySQL**: localhost:3307 (root/admin)
+
+### 4️⃣ Test API
+
+```powershell
+# Health check
+curl http://localhost:8000/health
+
+# Chat với database (generate + execute)
+curl -X POST http://localhost:8000/chat `
+  -H "Content-Type: application/json" `
+  -d '{
+    "message": "How many users do we have?",
+    "execute_query": true
+  }'
+
+# Xem schema
+curl http://localhost:8000/schema
+```
+
+**Response example:**
+
+```json
+{
+  "session_id": "abc123",
+  "sql_generation": {
+    "query": "SELECT COUNT(*) AS user_count FROM users;",
+    "confidence": 0.95,
+    "explanation": "Counts total users in database"
+  },
+  "execution": {
+    "success": true,
+    "rows": [{ "user_count": 500 }],
+    "row_count": 1
+  }
+}
+```
+
+---
+
+## 📚 API Endpoints
+
+### 🔹 Chat - Generate & Execute SQL
+
+```http
+POST /chat
+```
+
+**Request:**
+
+```json
+{
+  "message": "Show me top 10 products by sales",
+  "execute_query": true,
+  "session_id": "optional-session-id",
+  "temperature": 0.1
+}
+```
+
+**Response:**
+
+```json
+{
+  "session_id": "abc123",
+  "sql_generation": {
+    "query": "SELECT p.product_name, SUM(oi.quantity) as total_sales\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nGROUP BY p.product_id, p.product_name\nORDER BY total_sales DESC\nLIMIT 10;",
+    "confidence": 0.92,
+    "explanation": "Joins products with order_items, aggregates sales, returns top 10"
+  },
+  "execution": {
+    "success": true,
+    "rows": [
+      { "product_name": "iPhone 14", "total_sales": 245 },
+      { "product_name": "MacBook Pro", "total_sales": 189 }
+    ],
+    "row_count": 10,
+    "execution_time": 0.023
+  }
+}
+```
+
+### 🔹 Batch Processing
+
+```http
+POST /chat/batch
+```
+
+**Request:**
+
+```json
+{
+  "messages": [
+    "How many users?",
+    "Show top 5 categories",
+    "Average order value"
+  ],
+  "execute_queries": true,
+  "session_id": "batch-session"
+}
+```
+
+### 🔹 Schema Info
+
+```http
+GET /schema
+```
+
+Returns database structure (24 tables: users, products, orders, etc.)
+
+### 🔹 Conversation History
+
+```http
+POST /conversation/history
+```
+
+```json
+{
+  "session_id": "abc123",
+  "limit": 50
+}
+```
+
+### 🔹 Health Check
+
+```http
+GET /health
+```
+
+**Response:**
+
+```json
+{
+  "status": "healthy",
+  "database_connected": true,
+  "llm_provider": "gemini",
+  "llm_model": "gemini-1.5-flash",
+  "tables": 24
+}
+```
+
+> 📖 **Full API Docs**: http://localhost:8000/docs (Swagger UI)
+
+---
+
+## 🎯 Ví dụ Queries
+
+### Aggregations
 
 ```
-┌─────────────┐
-│  Frontend   │  (React, Vue, Angular, etc.)
-│  Chat UI    │
-└──────┬──────┘
-       │ HTTP REST API
-       │
-┌──────▼──────────────────────┐
-│      FastAPI Server         │
-│        (main.py)            │
-├─────────────────────────────┤
-│   Chat Service              │ ← Session management
-│   NL2SQL Converter          │ ← OpenAI GPT integration
-│   Schema Extractor          │ ← DB schema analysis
-│   Query Executor            │ ← Safe query execution
-└──────┬──────────────────────┘
-       │
-┌──────▼──────────┐
-│   Database      │
-│  (PostgreSQL)   │
-└─────────────────┘
+"How many users do we have?"
+"What's the average order value?"
+"Total revenue this month"
 ```
 
-### Request Flow
+### Filtering
 
-1. Frontend sends natural language question via POST /chat
-2. ChatService manages session and conversation history
-3. NL2SQLConverter calls OpenAI API with database schema
-4. OpenAI returns structured SQL with explanation
-5. QueryExecutor validates and executes query (if requested)
-6. Results returned to frontend as JSON
+```
+"Show users registered after 2024-01-01"
+"Products with price above $100"
+"Orders with status 'delivered'"
+```
+
+### Joins
+
+```
+"Show orders with customer names"
+"Products with their categories"
+"Users with their order history"
+```
+
+### Sorting & Limiting
+
+```
+"Top 10 customers by spending"
+"Latest 20 orders"
+"5 most expensive products"
+```
+
+### Grouping
+
+```
+"Revenue by month"
+"Order count by status"
+"Average rating per product category"
+```
+
+---
+
+## 🔧 Cấu hình
+
+### Environment Variables (.env)
+
+```bash
+# ============================================
+# LLM Provider Configuration
+# ============================================
+LLM_PROVIDER=gemini              # openai | gemini | openrouter | anthropic | azure_openai
+
+# Gemini (FREE)
+GEMINI_API_KEY=your-key-here
+GEMINI_MODEL=gemini-1.5-flash
+
+# OpenAI
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4o-mini
+
+# OpenRouter
+OPENROUTER_API_KEY=sk-or-your-key-here
+OPENROUTER_MODEL=openai/gpt-4o-mini
+
+# Anthropic Claude
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# Azure OpenAI
+AZURE_OPENAI_API_KEY=your-key-here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT=your-deployment
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+
+# Advanced LLM Settings
+LLM_TEMPERATURE=0.1
+LLM_MAX_RETRIES=3
+LLM_TIMEOUT=30
+
+# ============================================
+# Database Configuration
+# ============================================
+DATABASE_URL=mysql+pymysql://root:admin@mysql:3306/ecommerce
+
+# ============================================
+# Server Configuration
+# ============================================
+HOST=0.0.0.0
+PORT=8000
+DEFAULT_LIMIT=100
+LOG_LEVEL=INFO
+CORS_ORIGINS=*
+```
+
+---
+
+## 🐳 Docker Commands
+
+```powershell
+# Setup tự động (recommended)
+.\setup_docker.ps1
+
+# Hoặc manual commands:
+docker-compose -f docker-compose.full.yml up -d --build
+docker-compose -f docker-compose.full.yml logs -f
+docker-compose -f docker-compose.full.yml down
+
+# Restart services
+docker-compose -f docker-compose.full.yml restart
+
+# Restart chỉ API (sau khi đổi LLM provider)
+docker-compose -f docker-compose.full.yml restart nl2sql-api
+
+# MySQL CLI
+docker exec -it nl2sql-mysql mysql -u root -padmin ecommerce
+```
+
+---
+
+## 💻 Local Development (không dùng Docker)
+
+```powershell
+# 1. Cài đặt dependencies
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# 2. Setup MySQL (riêng biệt)
+# - Cài MySQL 8.0
+# - Import resources/data/ecommerce_schema.sql
+# - Run resources/data/generate_data.py
+
+# 3. Config .env
+DATABASE_URL=mysql+pymysql://root:admin@localhost:3307/ecommerce
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-key-here
+
+# 4. Run API server
+python main.py
+
+# Server chạy tại: http://localhost:8000
+```
+
+---
+
+## 📊 Database Schema
+
+**24 Tables** trong `ecommerce` database:
+
+### Core Tables
+
+- `users` - User accounts (500 records)
+- `products` - Products catalog (1000 records)
+- `categories` - Product categories (30 records)
+- `brands` - Product brands (50 records)
+
+### Orders
+
+- `orders` - Order headers (2000 records)
+- `order_items` - Order line items
+- `order_addresses` - Shipping/billing addresses
+- `order_status_history` - Status changes
+- `transactions` - Payment transactions
+- `shipments` - Shipping info
+
+### Product Management
+
+- `product_variants` - Product variations (size, color)
+- `product_images` - Product images
+- `product_attributes` - Custom attributes
+- `variant_attributes` - Variant-specific attributes
+- `product_categories` - Many-to-many relation
+- `inventory` - Stock levels
+
+### Customer Features
+
+- `user_addresses` - Saved addresses
+- `shopping_carts` - Active carts
+- `cart_items` - Cart contents
+- `product_reviews` - Reviews & ratings
+- `wishlists` - Wishlist items
+
+### Marketing
+
+- `coupons` - Discount coupons
+- `coupon_usage` - Coupon redemptions
+
+### Configuration
+
+- `payment_methods` - Payment options
+- `shipping_methods` - Shipping options
+
+> 📄 **Full schema**: `resources/data/ecommerce_schema.sql`
+
+---
+
+## 🤖 Multi-LLM Provider Support
+
+### Supported Providers
+
+| Provider         | Free Tier       | Cost     | Best For                 |
+| ---------------- | --------------- | -------- | ------------------------ |
+| **Gemini**       | ✅ 1500 req/day | FREE     | Development, learning    |
+| **OpenRouter**   | ✅ Some models  | $ - $$$  | Access to 100+ models    |
+| **OpenAI**       | $5 credit       | $$$      | Production, best quality |
+| **Claude**       | $5 credit       | $$ - $$$ | Complex reasoning        |
+| **Azure OpenAI** | ❌ None         | $$$      | Enterprise, compliance   |
+
+### Auto Fallback Logic
+
+```
+1. Đọc LLM_PROVIDER từ .env
+2. Nếu không set hoặc key invalid:
+   → Try Gemini (FREE)
+   → Try OpenAI
+   → Try OpenRouter
+   → Error nếu không có key nào
+3. Validate API key format
+4. Initialize client
+```
+
+### Switching Providers
+
+```powershell
+# Chỉnh .env
+LLM_PROVIDER=gemini
+
+# Restart API
+docker-compose -f docker-compose.full.yml restart nl2sql-api
+
+# Hoặc local:
+python main.py
+```
+
+> 📚 **Provider details**: [docs/llm_providers.md](docs/llm_providers.md)
+
+---
+
+## 🛡️ Security & Safety
+
+### ✅ Implemented
+
+- **Read-only**: Chỉ cho phép `SELECT` queries
+- **Query validation**: Block INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, etc.
+- **SQL injection prevention**: Parameterized queries
+- **Auto LIMIT**: Thêm LIMIT tự động nếu thiếu
+- **Input validation**: Pydantic models cho mọi input
+- **Error handling**: Graceful error messages, không expose internals
+
+### ⚠️ Production Recommendations
+
+- **Authentication**: Thêm API keys hoặc JWT
+- **Rate limiting**: Giới hạn requests/IP
+- **HTTPS**: Sử dụng reverse proxy (Nginx/Traefik)
+- **Monitoring**: Setup logging và alerts
+- **Backup**: Regular database backups
 
 ---
 
@@ -485,94 +493,52 @@ if result.execution_result.success:
 
 ```
 NL2SQL/
-├── main.py                    # FastAPI server entry point
+├── main.py                          # FastAPI entry point
+├── setup_docker.ps1                 # Automated Docker setup
+├── docker-compose.full.yml          # Full stack Docker config
+├── Dockerfile                       # API container image
+├── requirements.txt                 # Python dependencies
+├── .env                            # Environment config
+│
 ├── src/
 │   ├── api/
-│   │   └── models.py         # API request/response models
+│   │   └── models.py               # API request/response models
 │   ├── services/
-│   │   └── chat_service.py   # Chat business logic
+│   │   └── chat_service.py         # Chat business logic
 │   ├── core/
-│   │   ├── converter.py      # Main NL2SQL logic
-│   │   ├── schema_extractor.py
-│   │   └── query_executor.py
+│   │   ├── converter.py            # Main NL2SQL converter
+│   │   ├── llm_provider.py         # Multi-LLM adapter
+│   │   ├── schema_extractor.py     # DB schema analysis
+│   │   └── query_executor.py       # Safe SQL execution
 │   ├── models/
-│   │   └── sql_query.py      # Core data models
+│   │   └── sql_query.py            # Core data models
 │   ├── prompts/
-│   │   ├── system_prompt.py
-│   │   └── few_shot_examples.py
-│   ├── utils/
-│   │   ├── validation.py
-│   │   └── formatting.py
-│   └── cli.py                # CLI interface
-├── tests/                     # Unit & integration tests
-├── docs/                      # Documentation
-├── examples/                  # Code examples
-├── Dockerfile                 # Container definition
-├── docker-compose.yml         # Multi-service setup
-└── requirements.txt           # Python dependencies
+│   │   ├── system_prompt.py        # LLM system prompts
+│   │   └── few_shot_examples.py    # Example queries
+│   └── utils/
+│       ├── validation.py           # SQL validation
+│       └── formatting.py           # SQL formatting
+│
+├── resources/
+│   └── data/
+│       ├── ecommerce_schema.sql    # MySQL schema (24 tables)
+│       └── generate_data.py        # Sample data generator
+│
+├── docs/
+│   └── llm_providers.md            # LLM provider guide
+│
+├── tests/                           # Unit & integration tests
+└── examples/                        # Usage examples
 ```
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create `.env` file:
-
-```env
-# Database Configuration
-DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-
-# OpenAI Configuration
-OPENAI_API_KEY=sk-your-openai-api-key-here
-OPENAI_MODEL=gpt-4o-mini
-
-# Server Configuration (for backend mode)
-HOST=0.0.0.0
-PORT=8000
-DEFAULT_LIMIT=100
-LOG_LEVEL=INFO
-
-# Security
-# Add authentication/rate limiting in production
-```
-
-### Docker Configuration
-
-See `docker-compose.yml` for:
-
-- **nl2sql-api**: FastAPI server
-- **postgres**: PostgreSQL database with sample data
-- **pgadmin**: Database management UI (optional)
-
----
-
-## 📚 Documentation
-
-### Getting Started
-
-- **[Quick Start](docs/quickstart.md)** - Bắt đầu trong 5 phút
-- **[Backend Server Guide](docs/backend_server.md)** - Chạy server cho frontend
-- **[API Reference](docs/api.md)** - Đầy đủ API endpoints với examples
-
-### Advanced
-
-- [Installation Guide](docs/installation.md) - Chi tiết cài đặt
-- [Configuration Guide](docs/configuration.md) - Cấu hình nâng cao
-- [Usage Guide](docs/usage.md) - CLI usage đầy đủ
-
-### Examples
-
-- [Python Examples](examples/) - Basic, PostgreSQL, MySQL, Batch
-- [Frontend Integration](docs/backend_server.md#-frontend-integration) - React, Vue examples
-- [API Examples](docs/api.md#-usage-examples) - JavaScript, cURL, Python
 
 ---
 
 ## 🧪 Testing
 
-```bash
+```powershell
+# Install test dependencies
+pip install pytest pytest-cov
+
 # Run all tests
 pytest
 
@@ -580,57 +546,68 @@ pytest
 pytest --cov=src --cov-report=html
 
 # Specific test file
-pytest tests/test_converter.py
+pytest tests/test_converter.py -v
 
-# Integration tests
-pytest tests/integration/
+# Integration tests (requires DB + API key)
+$env:DATABASE_URL="mysql+pymysql://root:admin@localhost:3307/ecommerce"
+$env:LLM_PROVIDER="gemini"
+$env:GEMINI_API_KEY="your-key"
+pytest tests/ -m integration
 ```
-
----
-
-## 🐳 Docker Deployment
-
-### Development
-
-```bash
-docker-compose up -d
-```
-
-### Production
-
-```bash
-# Build and deploy
-docker-compose -f docker-compose.prod.yml up -d
-
-# Behind reverse proxy (Nginx/Traefik)
-# See docs/deployment.md for details
-```
-
----
-
-## 🔒 Security
-
-- ✅ **Read-only operations**: Chỉ cho phép SELECT queries
-- ✅ **SQL injection prevention**: Validation và parameterization
-- ✅ **Query limits**: Tự động thêm LIMIT để tránh large result sets
-- ✅ **Input validation**: Pydantic models cho tất cả inputs
-- ⚠️ **Add authentication** trong production (API keys, JWT, OAuth)
-- ⚠️ **Rate limiting** recommended cho production
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome! 🎉
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. Fork repository
+2. Create feature branch: `git checkout -b feature/AmazingFeature`
+3. Commit changes: `git commit -m 'Add AmazingFeature'`
+4. Push to branch: `git push origin feature/AmazingFeature`
+5. Open Pull Request
 
 ---
 
-## 📄 License
+## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **OpenAI** - GPT models
+- **Google** - Gemini models (FREE tier!)
+- **Anthropic** - Claude models
+- **OpenRouter** - Multi-model access
+- **FastAPI** - Modern web framework
+- **instructor** - Structured LLM outputs
+- **SQLAlchemy** - Database ORM
+
+---
+
+## 📞 Support
+
+- 📧 Email: phatnguyen@example.com
+- 🐛 Issues: [GitHub Issues](https://github.com/PhatNguyenduc/NL2SQL/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/PhatNguyenduc/NL2SQL/discussions)
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Support for PostgreSQL
+- [ ] CLI interface
+- [ ] Web UI dashboard
+- [ ] Query optimization suggestions
+- [ ] Multi-language support (Vietnamese)
+- [ ] Export to CSV/Excel
+- [ ] Query templates library
+- [ ] User authentication & permissions
+
+---
+
+⭐ **If you find this project useful, please give it a star!**
+
+Made with ❤️ by [PhatNguyenduc](https://github.com/PhatNguyenduc)

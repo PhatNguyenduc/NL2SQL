@@ -65,13 +65,12 @@ async def lifespan(app: FastAPI):
             raise ValueError("DATABASE_URL not set")
         
         db_type = get_database_type(db_url)
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         default_limit = int(os.getenv("DEFAULT_LIMIT", "100"))
         
+        # Let converter auto-detect LLM provider from env vars
         converter = NL2SQLConverter(
             connection_string=db_url,
             database_type=db_type,
-            model=model,
             enable_few_shot=True,
             default_limit=default_limit
         )

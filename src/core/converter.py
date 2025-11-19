@@ -1,10 +1,8 @@
-"""Main NL2SQL converter using OpenAI and Instructor"""
+"""Main NL2SQL converter with multi-LLM provider support"""
 
 import os
 import logging
 from typing import Optional, List
-import instructor
-from openai import OpenAI
 from src.models.sql_query import (
     SQLQuery, 
     DatabaseConfig, 
@@ -14,6 +12,12 @@ from src.models.sql_query import (
 )
 from src.core.schema_extractor import SchemaExtractor
 from src.core.query_executor import QueryExecutor
+from src.core.llm_provider import (
+    get_llm_client,
+    create_llm_config_from_env,
+    LLMConfig,
+    LLMProvider
+)
 from src.prompts.system_prompt import get_full_system_prompt, get_user_prompt_template
 from src.prompts.few_shot_examples import get_few_shot_examples, format_examples_for_prompt
 from src.utils.validation import validate_query_against_schema
@@ -29,37 +33,64 @@ class NL2SQLConverter:
         self,
         connection_string: str,
         database_type: DatabaseType = DatabaseType.POSTGRESQL,
-        openai_api_key: Optional[str] = None,
-        model: str = "gpt-4o-mini",
+        llm_config: Optional[LLMConfig] = None,
+        openai_api_key: Optional[str] = None,  # Backward compatibility
+        model: Optional[str] = None,  # Backward compatibility
         enable_few_shot: bool = True,
         enable_auto_execute: bool = False,
         default_limit: int = 100
     ):
         """
-        Initialize NL2SQL converter
+        Initialize NL2SQL converter with multi-LLM provider support
         
         Args:
             connection_string: Database connection string
             database_type: Type of database (postgresql or mysql)
-            openai_api_key: OpenAI API key (if None, reads from env)
-            model: OpenAI model to use
+            llm_config: LLM configuration (if None, creates from env vars)
+            openai_api_key: OpenAI API key (deprecated, use llm_config or env vars)
+            model: Model name (deprecated, use llm_config or env vars)
             enable_few_shot: Enable few-shot learning examples
             enable_auto_execute: Automatically execute generated queries
             default_limit: Default LIMIT for queries
         """
         self.connection_string = connection_string
         self.database_type = database_type
-        self.model = model
         self.enable_few_shot = enable_few_shot
         self.enable_auto_execute = enable_auto_execute
         self.default_limit = default_limit
         
-        # Initialize OpenAI client with Instructor
-        api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OpenAI API key not provided and OPENAI_API_KEY env var not set")
+        # Initialize LLM client with multi-provider support
+        if llm_config is None:
+            # Try to create from env vars
+            try:
+                llm_config = create_llm_config_from_env()
+                
+                # Override with explicit parameters for backward compatibility
+                if openai_api_key:
+                    llm_config.api_key = openai_api_key
+                    llm_config.provider = LLMProvider.OPENAI
+                if model:
+                    llm_config.model = model
+                    
+            except Exception as e:
+                # Fallback to OpenAI with explicit params
+                if openai_api_key or os.getenv("OPENAI_API_KEY"):
+                    logger.warning(f"Failed to create LLM config from env: {e}. Falling back to OpenAI.")
+                    from src.core.llm_provider import LLMConfig, LLMProvider
+                    llm_config = LLMConfig(
+                        provider=LLMProvider.OPENAI,
+                        api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
+                        model=model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                    )
+                else:
+                    raise ValueError(
+                        "No LLM configuration provided. Set LLM_PROVIDER and appropriate API key env vars, "
+                        "or provide llm_config parameter"
+                    )
         
-        self.client = instructor.from_openai(OpenAI(api_key=api_key))
+        self.llm_config = llm_config
+        self.model = llm_config.model
+        self.client = get_llm_client(llm_config)
         
         # Initialize schema extractor
         self.schema_extractor = SchemaExtractor(connection_string, database_type)
