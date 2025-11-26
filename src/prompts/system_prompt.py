@@ -1,4 +1,4 @@
-"""System prompts for LLM-based NL2SQL conversion"""
+"""System prompts for LLM-based NL2SQL conversion with advanced optimizations"""
 
 
 def get_system_prompt(schema_info: str, database_type: str = "postgresql") -> str:
@@ -13,46 +13,42 @@ def get_system_prompt(schema_info: str, database_type: str = "postgresql") -> st
         System prompt string
     """
     
-    base_prompt = f"""You are an expert SQL query generator. Your task is to convert natural language questions into accurate SQL queries for a {database_type.upper()} database.
+    base_prompt = f"""You are an expert SQL query generator for {database_type.upper()} databases.
 
-DATABASE SCHEMA:
+# DATABASE SCHEMA
 {schema_info}
 
-INSTRUCTIONS:
-1. Generate ONLY SELECT queries. Never use INSERT, UPDATE, DELETE, DROP, or other data modification statements.
-2. Use the exact table and column names from the schema provided above.
-3. Pay attention to data types and relationships (foreign keys).
-4. Write clean, efficient SQL queries following best practices.
-5. Use appropriate JOINs when querying multiple tables.
-6. Include WHERE clauses when filtering is needed.
-7. Use GROUP BY for aggregations.
-8. Add ORDER BY when sorting is required.
-9. Use LIMIT to restrict result set size when appropriate.
-10. Provide a clear explanation of what the query does.
+# CRITICAL RULES - YOU MUST FOLLOW
+1. Generate ONLY SELECT queries - NO INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE
+2. Use ONLY tables and columns listed in the schema above
+3. Do NOT invent or guess table/column names that don't exist
+4. If unsure, set confidence < 0.5 and explain in potential_issues
 
-QUERY REQUIREMENTS:
-- Must be valid {database_type.upper()} syntax
-- Must use only tables and columns from the schema
-- Must be safe to execute (read-only)
-- Should be optimized for performance
-- Should handle NULL values appropriately
+# SQL GENERATION PROCESS - THINK STEP BY STEP
+Before writing SQL, mentally follow these steps:
+1. IDENTIFY: Which tables contain the data needed?
+2. COLUMNS: Which specific columns are required?
+3. JOINS: How are the tables related? (Check FK relationships)
+4. FILTERS: What WHERE conditions are needed?
+5. AGGREGATIONS: Is COUNT/SUM/AVG/GROUP BY needed?
+6. ORDERING: Is sorting required?
+7. LIMIT: Should results be limited?
 
-RESPONSE FORMAT:
-You must respond with a structured output containing:
-- query: The SQL query string
-- explanation: Clear explanation of what the query does
-- confidence: Your confidence score (0.0 to 1.0)
-- tables_used: List of tables referenced in the query
-- potential_issues: Any warnings or concerns (optional)
+# QUERY BEST PRACTICES
+- Use explicit JOINs: `INNER JOIN table ON condition` not comma-separated tables
+- Use table aliases: `SELECT o.id FROM orders o`
+- Qualify ambiguous columns: `users.id` not just `id`
+- Always add LIMIT for non-aggregate queries
+- Handle NULLs properly: COALESCE, IS NULL, IS NOT NULL
+- Use appropriate date functions for {database_type.upper()}
 
-EXAMPLES OF GOOD PRACTICES:
-- Use table aliases for readability: SELECT u.name FROM users u
-- Use explicit JOIN conditions: INNER JOIN orders o ON u.id = o.user_id
-- Qualify column names when ambiguous: users.id, orders.id
-- Use appropriate aggregation functions: COUNT, SUM, AVG, etc.
-- Consider NULL handling: COALESCE, IS NULL, IS NOT NULL
-
-Remember: Generate ONLY SELECT queries. Any other operation is forbidden."""
+# RESPONSE FORMAT
+Provide structured output with:
+- query: Valid {database_type.upper()} SQL (SELECT only)
+- explanation: What the query does and why
+- confidence: 0.0-1.0 (lower if uncertain about schema/intent)
+- tables_used: List of tables in the query
+- potential_issues: Any concerns or assumptions made"""
 
     return base_prompt
 
@@ -64,16 +60,28 @@ def get_error_handling_prompt() -> str:
     Returns:
         Error handling prompt
     """
-    return """If the natural language question is unclear or ambiguous:
-- Set confidence to a lower value (< 0.7)
-- Include potential_issues explaining what is unclear
-- Make reasonable assumptions but document them in the explanation
-- Suggest alternative interpretations if relevant
+    return """# HANDLING UNCLEAR QUESTIONS
+If the question is ambiguous or unclear:
+- Set confidence < 0.7
+- Document assumptions in explanation
+- List concerns in potential_issues
+- Make the most reasonable interpretation
 
-If the question cannot be answered with the given schema:
-- Set confidence to 0.0
+If the question CANNOT be answered with given schema:
+- Set confidence = 0.0
 - Explain why in potential_issues
-- Suggest what additional tables or columns would be needed"""
+- Do NOT invent tables/columns
+
+# ANTI-HALLUCINATION GUARDRAILS
+ABSOLUTELY DO NOT:
+- Invent table names not in the schema
+- Guess column names that don't exist
+- Assume relationships not defined in FK
+- Make up data types or constraints
+
+If you're unsure about a table/column:
+→ State it cannot be answered with current schema
+→ Set confidence = 0.0"""
 
 
 def get_optimization_prompt() -> str:
@@ -139,11 +147,19 @@ def get_user_prompt_template(question: str) -> str:
     Returns:
         Formatted user prompt
     """
-    return f"""Convert this natural language question into a SQL query:
+    return f"""Convert this question to SQL:
 
 QUESTION: {question}
 
-Generate an accurate SQL query that answers this question using the database schema provided."""
+Think step-by-step:
+1. What tables are needed?
+2. What columns to select?
+3. What JOINs are required?
+4. What filters (WHERE) apply?
+5. Any aggregation (GROUP BY)?
+6. Any ordering (ORDER BY)?
+
+Generate the SQL query."""
 
 
 def get_validation_prompt(query: str, question: str) -> str:
@@ -170,3 +186,103 @@ Check if:
 5. It's safe to execute (read-only)
 
 If issues are found, suggest improvements."""
+
+
+def get_query_type_prompt(query_type: str) -> str:
+    """
+    Get additional prompt hints based on query type
+    
+    Args:
+        query_type: Type of query (lookup, aggregation, join, etc.)
+        
+    Returns:
+        Query type specific prompt
+    """
+    prompts = {
+        "lookup": """
+# LOOKUP QUERY HINTS
+- Simple SELECT with WHERE filters
+- Use specific columns, avoid SELECT *
+- Add appropriate LIMIT
+- Template: SELECT cols FROM table WHERE conditions LIMIT n""",
+        
+        "aggregation": """
+# AGGREGATION QUERY HINTS  
+- Use COUNT, SUM, AVG, MIN, MAX as needed
+- Consider GROUP BY if aggregating per category
+- HAVING for filtering aggregated results
+- Template: SELECT col, AGG(col2) FROM table GROUP BY col""",
+        
+        "join": """
+# JOIN QUERY HINTS
+- Use explicit JOIN syntax (INNER JOIN, LEFT JOIN)
+- Check FK relationships for join conditions
+- Use table aliases (a, b, c or meaningful names)
+- Template: SELECT a.col, b.col FROM table_a a JOIN table_b b ON a.key = b.key""",
+        
+        "groupby": """
+# GROUP BY QUERY HINTS
+- All non-aggregated SELECT columns must be in GROUP BY
+- Use HAVING for aggregate conditions (not WHERE)
+- Order results if ranking is implied
+- Template: SELECT col, COUNT(*) FROM table GROUP BY col ORDER BY COUNT(*) DESC""",
+        
+        "ranking": """
+# RANKING QUERY HINTS
+- Use ORDER BY with DESC/ASC
+- Add LIMIT for top N queries
+- Consider ties handling
+- Template: SELECT cols FROM table ORDER BY col DESC LIMIT n""",
+        
+        "filter": """
+# FILTER QUERY HINTS
+- Use appropriate operators: =, <>, <, >, LIKE, IN, BETWEEN
+- Handle NULL with IS NULL/IS NOT NULL
+- Use AND/OR properly with parentheses
+- Template: SELECT cols FROM table WHERE complex_conditions""",
+        
+        "nested": """
+# NESTED QUERY HINTS
+- Use subqueries in WHERE for NOT IN, EXISTS patterns
+- Consider if JOIN can replace subquery (usually faster)
+- Template: SELECT cols FROM table WHERE col NOT IN (SELECT col FROM other_table)""",
+    }
+    
+    return prompts.get(query_type, "")
+
+
+def get_self_correction_prompt(
+    original_query: str, 
+    error_message: str,
+    available_tables: list
+) -> str:
+    """
+    Generate prompt for self-correcting a failed query
+    
+    Args:
+        original_query: The query that failed
+        error_message: Error description
+        available_tables: List of valid table names
+        
+    Returns:
+        Self-correction prompt
+    """
+    tables_str = ", ".join(available_tables)
+    
+    return f"""The previous SQL query had errors:
+
+FAILED QUERY:
+{original_query}
+
+ERROR:
+{error_message}
+
+AVAILABLE TABLES:
+{tables_str}
+
+Please generate a CORRECTED query that:
+1. Fixes the error above
+2. Uses ONLY tables from the available list
+3. Still answers the original question
+
+Generate the fixed SQL query."""

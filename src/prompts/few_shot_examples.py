@@ -114,6 +114,79 @@ LIMIT 100""",
             "confidence": 0.9,
             "tables_used": ["users"],
             "potential_issues": ["Date interval syntax may vary by database"]
+        },
+        # Vietnamese examples
+        {
+            "question": "Tổng doanh thu theo tháng",
+            "query": """SELECT DATE_FORMAT(order_date, '%Y-%m') as month,
+       SUM(total_amount) as total_revenue
+FROM orders
+GROUP BY DATE_FORMAT(order_date, '%Y-%m')
+ORDER BY month DESC""",
+            "explanation": "Tính tổng doanh thu nhóm theo tháng",
+            "confidence": 1.0,
+            "tables_used": ["orders"]
+        },
+        {
+            "question": "Khách hàng mua nhiều nhất",
+            "query": """SELECT c.id, c.name, c.email,
+       COUNT(o.id) as order_count,
+       SUM(o.total_amount) as total_spent
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name, c.email
+ORDER BY total_spent DESC
+LIMIT 10""",
+            "explanation": "Top 10 khách hàng chi tiêu nhiều nhất",
+            "confidence": 1.0,
+            "tables_used": ["customers", "orders"]
+        },
+        {
+            "question": "Sản phẩm bán chạy nhất tuần này",
+            "query": """SELECT p.id, p.name, SUM(oi.quantity) as total_sold
+FROM products p
+INNER JOIN order_items oi ON p.id = oi.product_id
+INNER JOIN orders o ON oi.order_id = o.id
+WHERE o.order_date >= CURDATE() - INTERVAL 7 DAY
+GROUP BY p.id, p.name
+ORDER BY total_sold DESC
+LIMIT 10""",
+            "explanation": "Top 10 sản phẩm bán nhiều nhất trong 7 ngày gần nhất",
+            "confidence": 0.9,
+            "tables_used": ["products", "order_items", "orders"]
+        },
+        # Complex query examples
+        {
+            "question": "Customers who placed orders but never left a review",
+            "query": """SELECT DISTINCT c.id, c.name, c.email
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id
+LEFT JOIN reviews r ON c.id = r.customer_id
+WHERE r.id IS NULL
+LIMIT 100""",
+            "explanation": "Finds customers with orders but no reviews using LEFT JOIN",
+            "confidence": 1.0,
+            "tables_used": ["customers", "orders", "reviews"]
+        },
+        {
+            "question": "Compare this month revenue vs last month",
+            "query": """SELECT 
+    'This Month' as period,
+    SUM(total_amount) as revenue
+FROM orders
+WHERE MONTH(order_date) = MONTH(CURDATE())
+  AND YEAR(order_date) = YEAR(CURDATE())
+UNION ALL
+SELECT 
+    'Last Month' as period,
+    SUM(total_amount) as revenue
+FROM orders
+WHERE MONTH(order_date) = MONTH(CURDATE() - INTERVAL 1 MONTH)
+  AND YEAR(order_date) = YEAR(CURDATE() - INTERVAL 1 MONTH)""",
+            "explanation": "Compares current month and previous month revenue using UNION",
+            "confidence": 0.9,
+            "tables_used": ["orders"],
+            "potential_issues": ["Date handling may need adjustment"]
         }
     ]
     

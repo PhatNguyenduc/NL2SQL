@@ -370,6 +370,175 @@ async def get_active_sessions():
     }
 
 
+# ============================================
+# Cache Monitoring Endpoints
+# ============================================
+
+@app.get("/monitoring/cache/metrics", tags=["Monitoring"])
+async def get_cache_metrics():
+    """
+    Get cache performance metrics
+    
+    Returns hit rates, memory usage, and cache statistics.
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        stats = converter.get_cache_stats()
+        return {
+            "status": "ok",
+            "metrics": stats
+        }
+    except Exception as e:
+        logger.error(f"Cache metrics error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@app.get("/monitoring/cache/health", tags=["Monitoring"])
+async def get_cache_health():
+    """
+    Check cache health status
+    
+    Returns Redis connection status and cache availability.
+    """
+    global converter
+    
+    if not converter:
+        return {
+            "status": "unavailable",
+            "message": "Converter not initialized"
+        }
+    
+    try:
+        if converter.cache_manager:
+            health = converter.cache_manager.health_check()
+            return health
+        else:
+            return {
+                "status": "disabled",
+                "message": "Caching is disabled"
+            }
+    except Exception as e:
+        logger.error(f"Cache health check error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@app.post("/monitoring/cache/invalidate", tags=["Monitoring"])
+async def invalidate_cache(invalidate_sql: bool = True, invalidate_prompts: bool = True):
+    """
+    Invalidate caches
+    
+    - **invalidate_sql**: Invalidate SQL result cache
+    - **invalidate_prompts**: Invalidate prompt cache
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        converter.invalidate_cache(
+            invalidate_sql=invalidate_sql,
+            invalidate_prompts=invalidate_prompts
+        )
+        return {
+            "status": "ok",
+            "message": "Cache invalidated",
+            "invalidated": {
+                "sql": invalidate_sql,
+                "prompts": invalidate_prompts
+            }
+        }
+    except Exception as e:
+        logger.error(f"Cache invalidation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@app.get("/monitoring/schema/version", tags=["Monitoring"])
+async def get_schema_version():
+    """
+    Get current schema version information
+    
+    Returns schema hash and version history.
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        version_info = converter.schema_version_manager.get_version_info()
+        return {
+            "status": "ok",
+            "schema": version_info
+        }
+    except Exception as e:
+        logger.error(f"Schema version error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@app.post("/monitoring/schema/reload", tags=["Monitoring"])
+async def reload_schema():
+    """
+    Reload database schema and invalidate caches
+    
+    Use this when database schema changes.
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        old_version = converter.schema_version_manager.get_current_version()
+        converter.load_schema()
+        new_version = converter.schema_version_manager.get_current_version()
+        
+        schema_changed = old_version != new_version
+        
+        return {
+            "status": "ok",
+            "message": "Schema reloaded",
+            "schema_changed": schema_changed,
+            "old_version": old_version,
+            "new_version": new_version,
+            "tables_count": converter.schema.total_tables if converter.schema else 0
+        }
+    except Exception as e:
+        logger.error(f"Schema reload error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
