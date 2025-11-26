@@ -73,8 +73,16 @@ services:
       # Server Configuration
       - HOST=0.0.0.0
       - PORT=8000
-      - DEFAULT_LIMIT=100
-      - LOG_LEVEL=INFO
+      - DEFAULT_LIMIT=${DEFAULT_LIMIT:-100}
+      - MAX_RESULT_ROWS=${MAX_RESULT_ROWS:-1000}
+      # Database Connection Pool
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-10}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-20}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      # CORS
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
     depends_on:
       mysql:
         condition: service_healthy
@@ -106,6 +114,31 @@ services:
       - nl2sql-network
     profiles:
       - tools
+    restart: unless-stopped
+
+  # Streamlit Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nl2sql-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://nl2sql-api:8000
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    depends_on:
+      nl2sql-api:
+        condition: service_healthy
+    networks:
+      - nl2sql-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
 
 volumes:

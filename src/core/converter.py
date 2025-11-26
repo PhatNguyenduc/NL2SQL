@@ -2,7 +2,7 @@
 
 import os
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from src.models.sql_query import (
     SQLQuery, 
     DatabaseConfig, 
@@ -19,11 +19,26 @@ from src.core.llm_provider import (
     LLMProvider
 )
 from src.prompts.system_prompt import get_full_system_prompt, get_user_prompt_template
-from src.prompts.few_shot_examples import get_few_shot_examples, format_examples_for_prompt
+from src.prompts.few_shot_examples import get_few_shot_examples, format_examples_for_prompt, get_relevant_examples
 from src.utils.validation import validate_query_against_schema
 from src.utils.formatting import format_sql
 
+import re
+
 logger = logging.getLogger(__name__)
+
+
+# Keywords indicating schema/metadata questions (not data queries)
+SCHEMA_QUERY_PATTERNS = [
+    r'\b(schema|cấu trúc|structure)\b',
+    r'\b(tables?|bảng)\b.*\b(list|liệt kê|có gì|nào|what)\b',
+    r'\b(what|những|có)\b.*\b(tables?|bảng)\b',
+    r'\b(describe|mô tả|giải thích)\b.*\b(database|db|cơ sở dữ liệu)\b',
+    r'\b(columns?|cột|fields?|trường)\b.*\b(in|của|trong)\b.*\b(table|bảng)\b',
+    r'\b(database|db)\b.*\b(info|information|thông tin)\b',
+    r'\bshow\s+(tables?|databases?)\b',
+    r'\bdesc(ribe)?\s+\w+\b',
+]
 
 
 class NL2SQLConverter:
@@ -122,11 +137,79 @@ class NL2SQLConverter:
         logger.info(f"Schema loaded: {self.schema.total_tables} tables")
         return self.schema
     
+    def _is_schema_query(self, question: str) -> bool:
+        """
+        Detect if the question is asking about database schema/metadata
+        rather than actual data
+        
+        Args:
+            question: Natural language question
+            
+        Returns:
+            True if question is about schema/metadata
+        """
+        question_lower = question.lower()
+        
+        for pattern in SCHEMA_QUERY_PATTERNS:
+            if re.search(pattern, question_lower, re.IGNORECASE):
+                return True
+        return False
+    
+    def _generate_schema_response(self, question: str) -> SQLQuery:
+        """
+        Generate a response for schema/metadata questions
+        
+        Args:
+            question: The schema-related question
+            
+        Returns:
+            SQLQuery with schema information
+        """
+        if self.schema is None:
+            self.load_schema()
+        
+        # Get table names
+        table_names = self.schema_extractor.get_table_names()
+        
+        # Build schema summary
+        schema_info = []
+        schema_info.append(f"Database có {len(table_names)} bảng:")
+        for table in self.schema.tables:
+            col_count = len(table.columns)
+            pk_cols = [c.name for c in table.columns if c.is_primary_key]
+            pk_info = f" (PK: {', '.join(pk_cols)})" if pk_cols else ""
+            schema_info.append(f"  - {table.name}: {col_count} cột{pk_info}")
+        
+        explanation = "\n".join(schema_info)
+        
+        # For MySQL, we can actually query INFORMATION_SCHEMA
+        if self.database_type == DatabaseType.MYSQL:
+            sql = """SELECT TABLE_NAME, TABLE_ROWS, TABLE_COMMENT 
+FROM INFORMATION_SCHEMA.TABLES 
+WHERE TABLE_SCHEMA = DATABASE()
+ORDER BY TABLE_NAME"""
+        else:
+            # PostgreSQL
+            sql = """SELECT tablename, schemaname 
+FROM pg_catalog.pg_tables 
+WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY tablename"""
+        
+        return SQLQuery(
+            query=sql,
+            explanation=explanation,
+            confidence=1.0,
+            tables_used=["INFORMATION_SCHEMA"],
+            potential_issues=["Đây là metadata query, không phải data query"]
+        )
+    
     def generate_sql(
         self,
         question: str,
         temperature: float = 0.1,
-        max_retries: int = 2
+        max_retries: int = 2,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        enable_self_correction: bool = True
     ) -> SQLQuery:
         """
         Generate SQL query from natural language question
@@ -135,6 +218,8 @@ class NL2SQLConverter:
             question: Natural language question
             temperature: Model temperature (0.0 = deterministic, 1.0 = creative)
             max_retries: Maximum number of retry attempts
+            conversation_history: Previous conversation messages for context
+            enable_self_correction: Enable automatic retry with error feedback
             
         Returns:
             SQLQuery object
@@ -143,29 +228,42 @@ class NL2SQLConverter:
         if self.schema is None:
             self.load_schema()
         
+        # Check if this is a schema/metadata question
+        if self._is_schema_query(question):
+            logger.info(f"Detected schema query: {question}")
+            return self._generate_schema_response(question)
+        
         # Build system prompt
         system_prompt = get_full_system_prompt(self.schema_text, self.database_type.value)
         
-        # Add few-shot examples if enabled
+        # Add few-shot examples if enabled (use relevant examples)
         if self.enable_few_shot:
-            examples = get_few_shot_examples(self.database_type.value)
-            examples_text = format_examples_for_prompt(examples[:5])  # Use top 5 examples
+            examples = get_relevant_examples(question, max_examples=3)
+            if not examples:
+                examples = get_few_shot_examples(self.database_type.value)[:3]
+            examples_text = format_examples_for_prompt(examples)
             system_prompt = f"{system_prompt}\n\n{examples_text}"
+        
+        # Build messages with conversation context
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history for multi-turn context
+        if conversation_history:
+            for msg in conversation_history[-6:]:  # Last 6 messages (3 turns)
+                messages.append(msg)
         
         # Build user prompt
         user_prompt = get_user_prompt_template(question)
+        messages.append({"role": "user", "content": user_prompt})
         
         logger.info(f"Generating SQL for question: {question}")
         
         try:
-            # Call OpenAI with Instructor for structured output
+            # Call LLM with Instructor for structured output
             response = self.client.chat.completions.create(
                 model=self.model,
                 response_model=SQLQuery,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
+                messages=messages,
                 temperature=temperature,
                 max_retries=max_retries
             )
@@ -181,7 +279,15 @@ class NL2SQLConverter:
                 if response.potential_issues is None:
                     response.potential_issues = []
                 response.potential_issues.append(error_msg)
-                response.confidence *= 0.5  # Reduce confidence
+                response.confidence *= 0.5
+                
+                # Try self-correction if enabled
+                if enable_self_correction:
+                    corrected = self._self_correct_query(
+                        question, response, error_msg, messages, temperature
+                    )
+                    if corrected:
+                        return corrected
             
             # Format SQL
             response.query = format_sql(response.query)
@@ -192,6 +298,75 @@ class NL2SQLConverter:
         except Exception as e:
             logger.error(f"Failed to generate SQL: {e}")
             raise
+    
+    def _self_correct_query(
+        self,
+        original_question: str,
+        failed_response: SQLQuery,
+        error_message: str,
+        original_messages: List[Dict[str, str]],
+        temperature: float
+    ) -> Optional[SQLQuery]:
+        """
+        Attempt to self-correct a failed query by providing error feedback
+        
+        Args:
+            original_question: The original question
+            failed_response: The failed SQLQuery response
+            error_message: Error message describing what went wrong
+            original_messages: Original conversation messages
+            temperature: Model temperature
+            
+        Returns:
+            Corrected SQLQuery or None if correction fails
+        """
+        logger.info(f"Attempting self-correction for query error: {error_message}")
+        
+        correction_prompt = f"""The previous SQL query had an issue:
+
+ORIGINAL QUERY: {failed_response.query}
+ERROR: {error_message}
+
+Please generate a corrected SQL query that:
+1. Fixes the error mentioned above
+2. Uses only tables and columns that exist in the schema
+3. Still answers the original question: {original_question}
+
+Available tables: {', '.join(self.schema_extractor.get_table_names())}"""
+        
+        try:
+            messages = original_messages.copy()
+            messages.append({"role": "assistant", "content": f"```sql\n{failed_response.query}\n```"})
+            messages.append({"role": "user", "content": correction_prompt})
+            
+            corrected_response = self.client.chat.completions.create(
+                model=self.model,
+                response_model=SQLQuery,
+                messages=messages,
+                temperature=temperature,
+                max_retries=1
+            )
+            
+            # Validate corrected query
+            is_valid, _ = validate_query_against_schema(
+                corrected_response.query,
+                self.schema_extractor.get_table_names()
+            )
+            
+            if is_valid:
+                corrected_response.query = format_sql(corrected_response.query)
+                if corrected_response.potential_issues is None:
+                    corrected_response.potential_issues = []
+                corrected_response.potential_issues.append("Query was auto-corrected")
+                logger.info("Self-correction successful")
+                return corrected_response
+            else:
+                logger.warning("Self-correction still produced invalid query")
+                return None
+                
+        except Exception as e:
+            logger.warning(f"Self-correction failed: {e}")
+            return None
     
     def generate_and_execute(
         self,

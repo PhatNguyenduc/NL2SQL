@@ -2,13 +2,33 @@
 
 import uuid
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from src.api.models import ChatMessage, ChatResponse, SQLGenerationResponse, QueryExecutionResponse
 from src.core.converter import NL2SQLConverter
-from src.models.sql_query import DatabaseType
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Session configuration
+MAX_SESSIONS = 1000  # Maximum number of sessions to keep
+SESSION_EXPIRY_HOURS = 24  # Sessions older than this will be cleaned up
+
+
+class SessionData:
+    """Container for session data with metadata"""
+    def __init__(self):
+        self.messages: List[ChatMessage] = []
+        self.created_at: datetime = datetime.now(timezone.utc)
+        self.last_accessed: datetime = datetime.now(timezone.utc)
+    
+    def touch(self):
+        """Update last accessed time"""
+        self.last_accessed = datetime.now(timezone.utc)
+    
+    def is_expired(self, expiry_hours: int = SESSION_EXPIRY_HOURS) -> bool:
+        """Check if session has expired"""
+        expiry_time = datetime.now(timezone.utc) - timedelta(hours=expiry_hours)
+        return self.last_accessed < expiry_time
 
 
 class ChatService:
@@ -22,7 +42,8 @@ class ChatService:
             converter: NL2SQLConverter instance
         """
         self.converter = converter
-        self.conversations: Dict[str, List[ChatMessage]] = {}
+        self.conversations: Dict[str, SessionData] = {}
+        self._cleanup_counter = 0
         
     def generate_session_id(self) -> str:
         """Generate a unique session ID"""
@@ -51,18 +72,84 @@ class ChatService:
         Returns:
             ChatMessage object
         """
+        # Run cleanup periodically
+        self._cleanup_counter += 1
+        if self._cleanup_counter >= 100:
+            self._cleanup_expired_sessions()
+            self._cleanup_counter = 0
+        
         if session_id not in self.conversations:
-            self.conversations[session_id] = []
+            if len(self.conversations) >= MAX_SESSIONS:
+                self._evict_oldest_session()
+            self.conversations[session_id] = SessionData()
+        
+        session = self.conversations[session_id]
+        session.touch()
         
         message = ChatMessage(
             role=role,
             content=content,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metadata=metadata
         )
         
-        self.conversations[session_id].append(message)
+        session.messages.append(message)
         return message
+    
+    def _cleanup_expired_sessions(self):
+        """Remove expired sessions to free memory"""
+        expired = [sid for sid, s in self.conversations.items() if s.is_expired()]
+        for sid in expired:
+            del self.conversations[sid]
+        if expired:
+            logger.info(f"Cleaned up {len(expired)} expired sessions")
+    
+    def _evict_oldest_session(self):
+        """Evict the oldest session when max sessions reached"""
+        if not self.conversations:
+            return
+        oldest = min(self.conversations.keys(), 
+                     key=lambda sid: self.conversations[sid].last_accessed)
+        del self.conversations[oldest]
+        logger.info(f"Evicted oldest session: {oldest}")
+    
+    def _build_conversation_history(
+        self, 
+        session_id: str, 
+        max_turns: int = 5
+    ) -> List[Dict[str, str]]:
+        """
+        Build conversation history for LLM context
+        
+        Args:
+            session_id: Session ID
+            max_turns: Maximum conversation turns to include
+            
+        Returns:
+            List of message dicts with role and content
+        """
+        session = self.conversations.get(session_id)
+        if not session or not session.messages:
+            return []
+        
+        # Get recent messages (excluding the current user message which was just added)
+        recent_messages = session.messages[-(max_turns * 2 + 1):-1]  # *2 for user+assistant pairs
+        
+        history = []
+        for msg in recent_messages:
+            # For assistant messages, extract just the SQL if available
+            content = msg.content
+            if msg.role == "assistant" and msg.metadata:
+                sql = msg.metadata.get("sql_query")
+                if sql:
+                    content = f"SQL: {sql}"
+            
+            history.append({
+                "role": msg.role,
+                "content": content
+            })
+        
+        return history
     
     def get_conversation_history(
         self, 
@@ -79,7 +166,11 @@ class ChatService:
         Returns:
             List of ChatMessage objects
         """
-        messages = self.conversations.get(session_id, [])
+        session = self.conversations.get(session_id)
+        if not session:
+            return []
+        session.touch()
+        messages = session.messages
         if limit:
             return messages[-limit:]
         return messages
@@ -128,8 +219,15 @@ class ChatService:
         logger.info(f"Processing message in session {session_id}: {message}")
         
         try:
-            # Generate SQL
-            sql_query = self.converter.generate_sql(message, temperature=temperature)
+            # Build conversation history for context
+            conversation_history = self._build_conversation_history(session_id)
+            
+            # Generate SQL with conversation context
+            sql_query = self.converter.generate_sql(
+                message, 
+                temperature=temperature,
+                conversation_history=conversation_history
+            )
             
             # Create SQL generation response
             sql_response = SQLGenerationResponse(
@@ -175,7 +273,7 @@ class ChatService:
                 session_id=session_id,
                 sql_generation=sql_response,
                 execution=execution_response,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             
             logger.info(f"Successfully processed message {message_id}")

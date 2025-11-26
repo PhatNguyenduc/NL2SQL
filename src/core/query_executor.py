@@ -45,10 +45,18 @@ class QueryExecutor:
         self.engine: Optional[Engine] = None
     
     def connect(self) -> Engine:
-        """Create and return database engine"""
+        """Create and return database engine with connection pooling"""
         if self.engine is None:
             try:
-                self.engine = create_engine(self.connection_string, echo=False)
+                self.engine = create_engine(
+                    self.connection_string, 
+                    echo=False,
+                    pool_size=5,
+                    max_overflow=10,
+                    pool_timeout=30,
+                    pool_recycle=1800,
+                    pool_pre_ping=True
+                )
                 logger.info(f"Query executor connected to {self.database_type} database")
             except Exception as e:
                 logger.error(f"Failed to connect to database: {e}")
@@ -172,10 +180,7 @@ class QueryExecutor:
         try:
             engine = self.connect()
             with engine.connect() as conn:
-                if self.database_type == DatabaseType.POSTGRESQL:
-                    conn.execute(text("SELECT 1"))
-                elif self.database_type == DatabaseType.MYSQL:
-                    conn.execute(text("SELECT 1"))
+                conn.execute(text("SELECT 1"))
             logger.info("Connection test successful")
             return True
         except Exception as e:
@@ -193,13 +198,27 @@ class QueryExecutor:
             Row count or None if failed
         """
         try:
-            query = f"SELECT COUNT(*) as count FROM {table_name}"
+            # Validate table name to prevent SQL injection
+            if not self._is_valid_identifier(table_name):
+                logger.warning(f"Invalid table name: {table_name}")
+                return None
+            
+            # Use quoted identifier for safety
+            quoted_table = f"`{table_name}`" if self.database_type == DatabaseType.MYSQL else f'"{table_name}"'
+            query = f"SELECT COUNT(*) as count FROM {quoted_table}"
             result = self.execute(query)
             if result.success and result.rows:
                 return result.rows[0]['count']
         except Exception as e:
             logger.warning(f"Failed to get row count for {table_name}: {e}")
         return None
+    
+    def _is_valid_identifier(self, name: str) -> bool:
+        """Validate SQL identifier (table/column name)"""
+        import re
+        if not name or not isinstance(name, str):
+            return False
+        return bool(re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name))
     
     def __enter__(self):
         """Context manager entry"""

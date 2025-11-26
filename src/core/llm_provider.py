@@ -100,7 +100,10 @@ def _get_anthropic_client(config: LLMConfig):
     """Get Anthropic Claude client"""
     from anthropic import Anthropic
     
-    client = Anthropic(api_key=config.api_key)
+    client = Anthropic(
+        api_key=config.api_key,
+        timeout=float(config.timeout)
+    )
     return instructor.from_anthropic(client)
 
 

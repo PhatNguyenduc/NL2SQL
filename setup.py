@@ -32,7 +32,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "nl2sql=cli:main",
+            "nl2sql=src.cli:main",
         ],
     },
 )

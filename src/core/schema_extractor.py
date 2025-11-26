@@ -26,10 +26,18 @@ class SchemaExtractor:
         self._schema_cache: Optional[DatabaseSchema] = None
         
     def connect(self) -> Engine:
-        """Create and return database engine"""
+        """Create and return database engine with connection pooling"""
         if self.engine is None:
             try:
-                self.engine = create_engine(self.connection_string, echo=False)
+                self.engine = create_engine(
+                    self.connection_string, 
+                    echo=False,
+                    pool_size=3,
+                    max_overflow=5,
+                    pool_timeout=30,
+                    pool_recycle=1800,
+                    pool_pre_ping=True
+                )
                 logger.info(f"Connected to {self.database_type} database")
             except Exception as e:
                 logger.error(f"Failed to connect to database: {e}")
@@ -161,15 +169,29 @@ class SchemaExtractor:
             List of dictionaries representing rows
         """
         try:
+            # Validate table name to prevent SQL injection
+            if not self._is_valid_identifier(table_name):
+                logger.warning(f"Invalid table name: {table_name}")
+                return None
+            
             engine = self.connect()
             with engine.connect() as conn:
-                query = text(f"SELECT * FROM {table_name} LIMIT {limit}")
-                result = conn.execute(query)
+                # Use quoted identifier for safety
+                quoted_table = f"`{table_name}`" if self.database_type == DatabaseType.MYSQL else f'"{table_name}"'
+                query = text(f"SELECT * FROM {quoted_table} LIMIT :limit")
+                result = conn.execute(query, {"limit": limit})
                 rows = [dict(row._mapping) for row in result]
                 return rows if rows else None
         except Exception as e:
             logger.warning(f"Failed to get sample data for {table_name}: {e}")
             return None
+    
+    def _is_valid_identifier(self, name: str) -> bool:
+        """Validate SQL identifier (table/column name)"""
+        import re
+        if not name or not isinstance(name, str):
+            return False
+        return bool(re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name))
     
     def _get_database_name(self, engine: Engine) -> str:
         """

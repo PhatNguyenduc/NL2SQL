@@ -1,12 +1,15 @@
 """FastAPI server for NL2SQL backend"""
 
 import os
+import time
+import uuid
 import logging
 from contextlib import asynccontextmanager
 from typing import Optional
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 from src.core.converter import NL2SQLConverter
@@ -38,6 +41,27 @@ logger = logging.getLogger(__name__)
 # Global variables for converter and chat service
 converter: Optional[NL2SQLConverter] = None
 chat_service: Optional[ChatService] = None
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware for logging requests with unique request ID"""
+    
+    async def dispatch(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())[:8]
+        start_time = time.time()
+        
+        logger.info(f"[{request_id}] {request.method} {request.url.path}")
+        
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+            logger.info(f"[{request_id}] Completed {response.status_code} in {process_time:.3f}s")
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Process-Time"] = f"{process_time:.3f}"
+            return response
+        except Exception as e:
+            logger.error(f"[{request_id}] Error: {e}")
+            raise
 
 
 def get_database_type(connection_string: str) -> DatabaseType:
@@ -114,7 +138,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Process-Time"],
 )
+
+# Add request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 
 @app.get("/", tags=["Root"])
@@ -134,21 +162,21 @@ async def health_check():
     global converter
     
     db_connected = False
-    openai_configured = False
+    llm_configured = False
     
     try:
         if converter:
             db_connected = converter.test_connection()
-            openai_configured = True
+            llm_configured = converter.llm_config is not None
     except Exception as e:
         logger.error(f"Health check error: {e}")
     
-    status_value = "healthy" if (db_connected and openai_configured) else "unhealthy"
+    status_value = "healthy" if (db_connected and llm_configured) else "unhealthy"
     
     return HealthResponse(
         status=status_value,
         database_connected=db_connected,
-        openai_configured=openai_configured
+        llm_configured=llm_configured
     )
 
 

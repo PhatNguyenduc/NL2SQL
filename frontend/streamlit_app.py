@@ -7,11 +7,12 @@ import streamlit as st
 import requests
 import pandas as pd
 import json
+import os
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-# Configuration
-API_BASE_URL = "http://localhost:8000"
+# Configuration - Support environment variable for Docker
+API_BASE_URL = os.getenv("API_URL", "http://localhost:8000")
 DEFAULT_SESSION_ID = "streamlit-demo"
 
 # Page config

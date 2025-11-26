@@ -88,7 +88,7 @@ class HealthResponse(BaseModel):
     """Response model for health check"""
     status: str = Field(..., description="Service status")
     database_connected: bool = Field(..., description="Database connection status")
-    openai_configured: bool = Field(..., description="OpenAI API configured")
+    llm_configured: bool = Field(..., description="LLM provider configured")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
