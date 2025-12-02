@@ -36,6 +36,7 @@ from src.prompts.system_prompt import (
 from src.prompts.few_shot_examples import get_few_shot_examples, format_examples_for_prompt, get_relevant_examples
 from src.utils.validation import validate_query_against_schema
 from src.utils.formatting import format_sql
+from src.core.query_plan_cache import QueryPlanCache, get_query_plan_cache, QueryPattern
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,7 @@ class NL2SQLConverter:
         self.cache_manager: Optional[CacheManager] = None
         self.prompt_builder: Optional[PromptBuilder] = None
         self.semantic_cache: Optional[SemanticCache] = None
+        self.query_plan_cache: Optional[QueryPlanCache] = None
         
         if self.enable_caching:
             try:
@@ -157,7 +159,8 @@ class NL2SQLConverter:
                     enable_caching=True
                 )
                 self.semantic_cache = get_semantic_cache()
-                logger.info("Prompt and SQL caching enabled")
+                self.query_plan_cache = get_query_plan_cache()
+                logger.info("Prompt, SQL, and Query Plan caching enabled")
             except Exception as e:
                 logger.warning(f"Failed to initialize caching: {e}. Continuing without cache.")
                 self.enable_caching = False
@@ -336,6 +339,27 @@ ORDER BY tablename"""
                         potential_issues=["Result from cache"]
                     )
         
+        # Try Query Plan Cache (pattern-based template matching)
+        if use_cache and self.enable_caching and self.query_plan_cache:
+            if not conversation_history:  # Only use for standalone queries
+                plan_result = self.query_plan_cache.get(question)
+                if plan_result:
+                    plan, runtime_params = plan_result
+                    filled_sql = self.query_plan_cache.fill_template(plan, runtime_params)
+                    
+                    # Validate filled SQL
+                    if self.sql_validator:
+                        validation = self.sql_validator.validate(filled_sql)
+                        if validation.is_valid:
+                            logger.info(f"Using Query Plan Cache (pattern: {plan.pattern.value})")
+                            return SQLQuery(
+                                query=format_sql(filled_sql),
+                                explanation=f"Generated from cached query plan (pattern: {plan.pattern.value})",
+                                confidence=plan.confidence,
+                                tables_used=plan.tables_used,
+                                potential_issues=[f"Template-based generation, hit_count: {plan.hit_count}"]
+                            )
+        
         # Preprocess question (Vietnamese handling, classification)
         processed = None
         query_type = None
@@ -485,6 +509,16 @@ ORDER BY tablename"""
                     tables_used=response.tables_used or [],
                     schema_version=schema_version
                 )
+                
+                # Also cache as query plan for pattern-based reuse
+                if self.query_plan_cache:
+                    self.query_plan_cache.put(
+                        question=question,
+                        sql=response.query,
+                        tables_used=response.tables_used or [],
+                        columns_used=[],  # Could extract from SQL if needed
+                        confidence=response.confidence
+                    )
             
             logger.info(f"SQL generated successfully (confidence: {response.confidence})")
             return response
@@ -587,6 +621,117 @@ ORDER BY tablename"""
         result = self.query_executor.execute(sql_query.query)
         
         return sql_query, result
+    
+    def generate_and_execute_with_feedback(
+        self,
+        question: str,
+        temperature: float = 0.1,
+        max_retries: int = 3
+    ) -> tuple[SQLQuery, QueryResult, List[Dict]]:
+        """
+        Generate SQL and execute with automatic error correction using execution feedback
+        
+        This method uses the SQL Execution Feedback system to:
+        1. Execute the generated SQL
+        2. If execution fails, analyze the error
+        3. Use the error analysis to generate a corrected query
+        4. Retry until success or max_retries reached
+        
+        Args:
+            question: Natural language question
+            temperature: Model temperature
+            max_retries: Maximum correction attempts
+            
+        Returns:
+            Tuple of (final_SQLQuery, QueryResult, feedback_history)
+        """
+        from src.core.execution_feedback import SQLExecutionFeedbackHandler, CorrectedQuery
+        
+        # Get schema info for feedback handler
+        table_names = self.schema_extractor.get_table_names()
+        column_map = {}
+        if self.schema:
+            for table in self.schema.tables:
+                column_map[table.table_name] = [c["name"] for c in table.columns]
+        
+        feedback_handler = SQLExecutionFeedbackHandler(
+            schema_tables=table_names,
+            schema_columns=column_map,
+            max_retries=max_retries
+        )
+        
+        # Generate initial SQL
+        sql_query = self.generate_sql(question, temperature)
+        current_query = sql_query.query
+        feedback_history = []
+        
+        for attempt in range(max_retries + 1):
+            # Execute query
+            result = self.query_executor.execute(current_query)
+            
+            if result.success:
+                logger.info(f"Query succeeded on attempt {attempt + 1}")
+                # Update sql_query with final query
+                sql_query.query = current_query
+                if attempt > 0:
+                    if sql_query.potential_issues is None:
+                        sql_query.potential_issues = []
+                    sql_query.potential_issues.append(f"Auto-corrected after {attempt} attempt(s)")
+                return sql_query, result, feedback_history
+            
+            # Execution failed
+            logger.warning(f"Attempt {attempt + 1} failed: {result.error_message}")
+            
+            # Create feedback
+            feedback = feedback_handler.create_feedback(
+                question, current_query, result.error_message
+            )
+            feedback_history.append({
+                "attempt": attempt + 1,
+                "query": current_query,
+                "error_type": feedback.error_analysis.error_type.value,
+                "error_message": result.error_message,
+                "suggested_fix": feedback.error_analysis.suggested_fix
+            })
+            
+            # Check if we should retry
+            if not feedback_handler.should_retry(feedback):
+                break
+            
+            # Get correction from LLM
+            try:
+                correction_messages = [
+                    {"role": "system", "content": "You are a SQL expert. Fix the provided SQL query based on the error feedback."},
+                    {"role": "user", "content": feedback.correction_prompt}
+                ]
+                
+                corrected = self.client.chat.completions.create(
+                    model=self.model,
+                    response_model=CorrectedQuery,
+                    messages=correction_messages,
+                    temperature=temperature,
+                    max_retries=1
+                )
+                
+                if corrected and corrected.corrected_sql != current_query:
+                    logger.info(f"Got correction: {corrected.explanation}")
+                    current_query = corrected.corrected_sql
+                    # Post-process
+                    current_query = self.sql_postprocessor.process(current_query)
+                    current_query = format_sql(current_query)
+                else:
+                    logger.warning("No new correction, stopping")
+                    break
+                    
+            except Exception as e:
+                logger.error(f"Correction failed: {e}")
+                break
+        
+        # Return last state
+        result = self.query_executor.execute(current_query)
+        sql_query.query = current_query
+        sql_query.confidence *= 0.5  # Reduce confidence since we had errors
+        return sql_query, result, feedback_history
     
     def ask(
         self,

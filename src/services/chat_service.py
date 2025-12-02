@@ -1,13 +1,16 @@
 """Chat service for handling conversation logic"""
 
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from src.api.models import ChatMessage, ChatResponse, SQLGenerationResponse, QueryExecutionResponse
 from src.core.converter import NL2SQLConverter
 import logging
 
 logger = logging.getLogger(__name__)
+
+# SQL Execution Feedback configuration
+MAX_EXECUTION_RETRIES = 2  # Maximum retries when SQL execution fails
 
 # Session configuration
 MAX_SESSIONS = 1000  # Maximum number of sessions to keep
@@ -185,6 +188,71 @@ class ChatService:
         if session_id in self.conversations:
             del self.conversations[session_id]
     
+    def _retry_with_execution_error(
+        self,
+        original_question: str,
+        failed_sql: str,
+        error_message: str,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        temperature: float = 0.1
+    ) -> Optional[str]:
+        """
+        Retry SQL generation with execution error feedback
+        
+        Args:
+            original_question: Original natural language question
+            failed_sql: The SQL that failed to execute
+            error_message: Database error message
+            conversation_history: Conversation context
+            temperature: Model temperature
+            
+        Returns:
+            Corrected SQL string or None if correction fails
+        """
+        try:
+            # Build error feedback prompt
+            error_feedback = f"""The SQL query you generated failed to execute.
+
+FAILED SQL:
+```sql
+{failed_sql}
+```
+
+DATABASE ERROR:
+{error_message}
+
+COMMON FIXES:
+- For UNION queries: Each SELECT must be wrapped in parentheses with its own ORDER BY/LIMIT
+- Example: (SELECT ... ORDER BY x LIMIT 5) UNION ALL (SELECT ... ORDER BY x LIMIT 5)
+- Check for syntax errors and MySQL compatibility
+- Verify column and table names are correct
+
+Please regenerate the correct SQL query for the original question: {original_question}"""
+            
+            # Build messages with error context
+            extended_history = (conversation_history or []).copy()
+            extended_history.append({"role": "assistant", "content": f"```sql\n{failed_sql}\n```"})
+            extended_history.append({"role": "user", "content": error_feedback})
+            
+            # Regenerate SQL
+            corrected = self.converter.generate_sql(
+                original_question,
+                temperature=temperature,
+                conversation_history=extended_history,
+                enable_self_correction=False,  # Avoid infinite loop
+                use_cache=False  # Don't use cache for retry
+            )
+            
+            if corrected and corrected.query != failed_sql:
+                logger.info(f"Generated corrected SQL after execution error")
+                return corrected.query
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to retry with execution error: {e}")
+            return None
+
     async def process_message(
         self,
         message: str,
@@ -229,19 +297,42 @@ class ChatService:
                 conversation_history=conversation_history
             )
             
-            # Create SQL generation response
-            sql_response = SQLGenerationResponse(
-                query=sql_query.query,
-                explanation=sql_query.explanation,
-                confidence=sql_query.confidence,
-                tables_used=sql_query.tables_used,
-                potential_issues=sql_query.potential_issues
-            )
-            
-            # Execute query if requested
+            # Execute query if requested (with retry on failure)
             execution_response = None
+            final_sql = sql_query.query
+            retry_count = 0
+            
             if execute_query:
                 result = self.converter.query_executor.execute(sql_query.query)
+                
+                # If execution failed, try to regenerate with error feedback
+                while not result.success and retry_count < MAX_EXECUTION_RETRIES:
+                    retry_count += 1
+                    logger.info(f"SQL execution failed, attempting retry {retry_count}/{MAX_EXECUTION_RETRIES}")
+                    
+                    # Generate SQL with error feedback
+                    corrected_sql = self._retry_with_execution_error(
+                        original_question=message,
+                        failed_sql=final_sql,
+                        error_message=result.error_message or "Unknown error",
+                        conversation_history=conversation_history,
+                        temperature=temperature
+                    )
+                    
+                    if corrected_sql and corrected_sql != final_sql:
+                        final_sql = corrected_sql
+                        result = self.converter.query_executor.execute(final_sql)
+                        
+                        if result.success:
+                            logger.info(f"SQL corrected successfully after {retry_count} retry(s)")
+                            # Update the query in response
+                            sql_query.query = final_sql
+                            if sql_query.potential_issues is None:
+                                sql_query.potential_issues = []
+                            sql_query.potential_issues.append(f"Auto-corrected after execution error (retries: {retry_count})")
+                    else:
+                        break
+                
                 execution_response = QueryExecutionResponse(
                     success=result.success,
                     rows=result.rows,
@@ -250,6 +341,15 @@ class ChatService:
                     columns=result.columns,
                     error_message=result.error_message
                 )
+            
+            # Create SQL generation response
+            sql_response = SQLGenerationResponse(
+                query=sql_query.query,
+                explanation=sql_query.explanation,
+                confidence=sql_query.confidence,
+                tables_used=sql_query.tables_used,
+                potential_issues=sql_query.potential_issues
+            )
             
             # Create assistant message
             assistant_content = f"Generated SQL:\n{sql_query.query}\n\nExplanation: {sql_query.explanation}"

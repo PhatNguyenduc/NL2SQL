@@ -442,6 +442,70 @@ async def get_async_status():
     }
 
 
+# ============================================
+# Advanced Endpoints
+# ============================================
+
+@app.post("/chat/execute-with-feedback", tags=["Advanced"])
+async def execute_with_feedback(request: ChatRequest):
+    """
+    Execute query with automatic error correction using execution feedback
+    
+    This endpoint:
+    1. Generates SQL from the question
+    2. Executes the query
+    3. If execution fails, analyzes the error and auto-corrects
+    4. Retries until success or max retries reached
+    
+    Returns the final query, execution result, and feedback history.
+    
+    - **message**: Natural language question
+    - **execute_query**: Always True for this endpoint (required)
+    - **temperature**: Model temperature (0.0-1.0)
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        sql_query, result, feedback_history = converter.generate_and_execute_with_feedback(
+            question=request.message,
+            temperature=request.temperature,
+            max_retries=3
+        )
+        
+        return {
+            "sql_generation": {
+                "query": sql_query.query,
+                "explanation": sql_query.explanation,
+                "confidence": sql_query.confidence,
+                "tables_used": sql_query.tables_used,
+                "potential_issues": sql_query.potential_issues
+            },
+            "execution": {
+                "success": result.success,
+                "rows": result.rows[:100] if result.rows else None,  # Limit rows
+                "row_count": result.row_count,
+                "execution_time": result.execution_time,
+                "columns": result.columns,
+                "error_message": result.error_message
+            },
+            "feedback_history": feedback_history,
+            "auto_corrected": len(feedback_history) > 0
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in execute-with-feedback endpoint: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 @app.post("/conversation/history", response_model=ConversationHistoryResponse, tags=["Conversation"])
 async def get_conversation_history(request: ConversationHistoryRequest):
     """
@@ -756,6 +820,90 @@ async def get_embedding_stats():
             }
     except Exception as e:
         logger.error(f"Embedding stats error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@app.get("/monitoring/query-plan/stats", tags=["Monitoring"])
+async def get_query_plan_stats():
+    """
+    Get Query Plan Cache statistics
+    
+    Returns:
+    - Cache size and limits
+    - Hit/miss rates
+    - Most used query patterns
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        if converter.query_plan_cache:
+            stats = converter.query_plan_cache.get_stats()
+            return {
+                "status": "ok",
+                "query_plan_cache": stats
+            }
+        else:
+            return {
+                "status": "disabled",
+                "message": "Query Plan Cache is disabled"
+            }
+    except Exception as e:
+        logger.error(f"Query plan stats error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@app.get("/monitoring/cache/all", tags=["Monitoring"])
+async def get_all_cache_stats():
+    """
+    Get all cache statistics in one call
+    
+    Returns combined stats from:
+    - Semantic Cache (embedding-based)
+    - Query Plan Cache (pattern-based)
+    - General Cache Manager
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    result = {
+        "status": "ok",
+        "caches": {}
+    }
+    
+    try:
+        # Semantic cache stats
+        if converter.semantic_cache:
+            result["caches"]["semantic_cache"] = converter.semantic_cache.get_stats()
+        
+        # Query plan cache stats  
+        if converter.query_plan_cache:
+            result["caches"]["query_plan_cache"] = converter.query_plan_cache.get_stats()
+        
+        # General cache manager stats
+        if converter.cache_manager:
+            result["caches"]["general_cache"] = converter.cache_manager.get_stats()
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Cache stats error: {e}")
         return {
             "status": "error",
             "error": str(e)

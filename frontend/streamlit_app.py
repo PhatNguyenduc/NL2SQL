@@ -346,14 +346,13 @@ def main():
         # Add user message
         st.session_state.messages.append({"role": "user", "content": user_input})
         
-        # Show thinking
+        auto_execute = st.session_state.get("auto_execute", True)
+        
+        # Show spinner while processing
         with st.spinner("🤔 Thinking..."):
-            # Call API
-            auto_execute = st.session_state.get("auto_execute", True)
             response = send_chat_message(user_input, execute=auto_execute)
             
             if response:
-                # Add assistant response
                 st.session_state.messages.append({"role": "assistant", "content": response})
         
         # Rerun to display new messages

@@ -26,6 +26,30 @@ from src.core.async_converter import (
     AsyncNL2SQLConverter,
     async_nl2sql
 )
+from src.core.query_decomposer import (
+    QueryDecomposer,
+    DecomposedQuery,
+    SubQuery,
+    DecompositionStrategy,
+    decompose_question
+)
+from src.core.execution_feedback import (
+    SQLExecutionFeedbackHandler,
+    ExecutionFeedback,
+    ErrorAnalysis,
+    SQLErrorType,
+    ExecutionFeedbackLoop,
+    analyze_sql_error
+)
+from src.core.query_plan_cache import (
+    QueryPlanCache,
+    QueryPlan,
+    QueryPattern,
+    QueryPatternDetector,
+    PatternMatch,
+    get_query_plan_cache,
+    reset_query_plan_cache
+)
 
 __all__ = [
     # Sync
@@ -48,5 +72,26 @@ __all__ = [
     "EmbeddingConfig",
     "SemanticCache",
     "get_semantic_cache",
-    "reset_semantic_cache"
+    "reset_semantic_cache",
+    # Query Decomposition
+    "QueryDecomposer",
+    "DecomposedQuery",
+    "SubQuery",
+    "DecompositionStrategy",
+    "decompose_question",
+    # Execution Feedback
+    "SQLExecutionFeedbackHandler",
+    "ExecutionFeedback",
+    "ErrorAnalysis",
+    "SQLErrorType",
+    "ExecutionFeedbackLoop",
+    "analyze_sql_error",
+    # Query Plan Cache
+    "QueryPlanCache",
+    "QueryPlan",
+    "QueryPattern",
+    "QueryPatternDetector",
+    "PatternMatch",
+    "get_query_plan_cache",
+    "reset_query_plan_cache"
 ]
