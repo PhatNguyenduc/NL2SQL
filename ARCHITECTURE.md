@@ -450,9 +450,20 @@ class SemanticSQLCache:
 **Features:**
 
 - Exact match với hash lookup
-- Semantic similarity (Jaccard + keyword matching)
+- **Embedding-based semantic similarity** (sử dụng vector embeddings)
+- Multiple embedding providers: OpenAI, Sentence Transformers, Gemini
 - Similarity threshold: 0.85 (configurable)
 - Query normalization cho Vietnamese
+- Query intent extraction (aggregation, operation, temporal)
+- Vector store với Redis persistence
+
+### Embedding Providers
+
+| Provider                  | Model                  | Dimension | Speed           | Quality   |
+| ------------------------- | ---------------------- | --------- | --------------- | --------- |
+| **Sentence Transformers** | all-MiniLM-L6-v2       | 384       | ⚡ Fast (local) | Good      |
+| **OpenAI**                | text-embedding-3-small | 1536      | Medium          | Excellent |
+| **Gemini**                | text-embedding-004     | 768       | Medium          | Very Good |
 
 ### Cache Flow
 
@@ -461,8 +472,20 @@ Question arrives
        │
        ▼
 ┌──────────────────┐    Yes    ┌─────────────────┐
-│ Check Semantic   │─────────▶ │ Return Cached   │
-│ SQL Cache        │           │ SQL (similarity)│
+│ Check Exact Hash │─────────▶ │ Return Cached   │
+│ Match            │           │ SQL (100% match)│
+└──────────────────┘           └─────────────────┘
+       │ No
+       ▼
+┌──────────────────┐
+│ Generate Query   │
+│ Embedding        │
+└──────────────────┘
+       │
+       ▼
+┌──────────────────┐    Yes    ┌─────────────────┐
+│ Vector Similarity│─────────▶ │ Return Similar  │
+│ Search (≥0.85)   │           │ SQL + Score     │
 └──────────────────┘           └─────────────────┘
        │ No
        ▼
@@ -485,6 +508,7 @@ Question arrives
        ▼
 ┌──────────────────┐
 │ Cache SQL Result │
+│ + Embedding      │
 └──────────────────┘
 ```
 
@@ -496,6 +520,7 @@ GET  /monitoring/cache/health       # Redis connection status
 POST /monitoring/cache/invalidate   # Clear caches
 GET  /monitoring/schema/version     # Current schema version
 POST /monitoring/schema/reload      # Reload schema, invalidate cache
+GET  /monitoring/embedding/stats    # Embedding cache statistics
 ```
 
 ### Configuration
@@ -512,6 +537,11 @@ CACHE_TTL_SQL=600          # 10 minutes
 
 # Semantic cache
 CACHE_SEMANTIC_THRESHOLD=0.85
+
+# Embedding Provider
+EMBEDDING_PROVIDER=sentence_transformers  # openai, sentence_transformers, gemini
+EMBEDDING_MODEL=all-MiniLM-L6-v2          # Model name
+# EMBEDDING_DIMENSIONS=512                # Optional: reduce dimensions
 ```
 
 ---
@@ -550,21 +580,21 @@ LOG_LEVEL=INFO
 
 ## 📊 Key Features Summary
 
-| Feature                  | Description                                  |
-| ------------------------ | -------------------------------------------- |
-| **Multi-LLM Support**    | OpenAI, Gemini, OpenRouter, Anthropic, Azure |
-| **Vietnamese NLP**       | 60+ synonyms, time expressions, entities     |
-| **Query Classification** | 8 query types with specialized prompts       |
-| **Schema Optimization**  | Compact format, semantic grouping            |
-| **Prompt Caching**       | Redis-based multi-level caching              |
-| **Semantic SQL Cache**   | Similar query matching (0.85 threshold)      |
-| **Self-Correction**      | Auto-fix invalid queries with error feedback |
-| **Validation**           | Table/column check, dangerous op detection   |
-| **Post-Processing**      | Auto LIMIT, SQL formatting                   |
-| **Multi-Turn Context**   | Conversation history awareness               |
-| **Session Management**   | With expiry and cleanup                      |
-| **Connection Pooling**   | Efficient database connections               |
-| **Cache Monitoring**     | /monitoring/cache/\* endpoints               |
+| Feature                      | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| **Multi-LLM Support**        | OpenAI, Gemini, OpenRouter, Anthropic, Azure |
+| **Vietnamese NLP**           | 60+ synonyms, time expressions, entities     |
+| **Query Classification**     | 8 query types with specialized prompts       |
+| **Schema Optimization**      | Compact format, semantic grouping            |
+| **Prompt Caching**           | Redis-based multi-level caching              |
+| **Embedding Semantic Cache** | Vector similarity matching với embeddings    |
+| **Self-Correction**          | Auto-fix invalid queries with error feedback |
+| **Validation**               | Table/column check, dangerous op detection   |
+| **Post-Processing**          | Auto LIMIT, SQL formatting                   |
+| **Multi-Turn Context**       | Conversation history awareness               |
+| **Session Management**       | With expiry and cleanup                      |
+| **Connection Pooling**       | Efficient database connections               |
+| **Cache Monitoring**         | /monitoring/cache/\* endpoints               |
 
 ---
 

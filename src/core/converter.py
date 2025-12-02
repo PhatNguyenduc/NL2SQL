@@ -25,7 +25,8 @@ from src.core.sql_validator import SQLValidator, SQLPostProcessor, ValidationRes
 from src.core.schema_version_manager import SchemaVersionManager
 from src.core.cache_manager import CacheManager, get_cache_manager, CacheLevel
 from src.core.prompt_builder import PromptBuilder, build_nl2sql_prompt
-from src.core.semantic_cache import SemanticSQLCache, get_semantic_cache
+from src.core.semantic_cache import SemanticCache, get_semantic_cache
+from src.core.embedding_provider import get_default_embedder, EmbeddingProvider
 from src.prompts.system_prompt import (
     get_full_system_prompt, 
     get_user_prompt_template,
@@ -145,7 +146,7 @@ class NL2SQLConverter:
         self.schema_version_manager = SchemaVersionManager()
         self.cache_manager: Optional[CacheManager] = None
         self.prompt_builder: Optional[PromptBuilder] = None
-        self.semantic_cache: Optional[SemanticSQLCache] = None
+        self.semantic_cache: Optional[SemanticCache] = None
         
         if self.enable_caching:
             try:

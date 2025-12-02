@@ -53,6 +53,23 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # Database Seeder (runs once to populate sample data)
+  seed:
+    build: ./seed
+    container_name: nl2sql-seed
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: admin
+      MYSQL_DB: ecommerce
+    networks:
+      - nl2sql-network
+    restart: "no"
+
   # NL2SQL API Service
   nl2sql-api:
     build:
@@ -107,6 +124,10 @@ services:
       - CACHE_TTL_SCHEMA=${CACHE_TTL_SCHEMA:-3600}
       - CACHE_TTL_PROMPT=${CACHE_TTL_PROMPT:-1800}
       - CACHE_TTL_SQL=${CACHE_TTL_SQL:-600}
+      - CACHE_SEMANTIC_THRESHOLD=${CACHE_SEMANTIC_THRESHOLD:-0.85}
+      # Embedding Configuration for Semantic Cache (uses OpenAI API)
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openai}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
     depends_on:
       mysql:
         condition: service_healthy

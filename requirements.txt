@@ -26,6 +26,13 @@ uvicorn>=0.24.0
 redis>=5.0.0
 hiredis>=2.3.0
 
+# Embeddings for Semantic Cache
+numpy>=1.24.0
+# OpenAI embeddings work with base openai package (already installed)
+
+# Optional: For local embeddings without API (adds ~900MB for torch)
+# sentence-transformers>=2.2.0
+
 # Optional UI
 streamlit>=1.28.0
 
