@@ -107,6 +107,10 @@ services:
       - CACHE_TTL_SCHEMA=${CACHE_TTL_SCHEMA:-3600}
       - CACHE_TTL_PROMPT=${CACHE_TTL_PROMPT:-1800}
       - CACHE_TTL_SQL=${CACHE_TTL_SQL:-600}
+      - CACHE_SEMANTIC_THRESHOLD=${CACHE_SEMANTIC_THRESHOLD:-0.85}
+      # Embedding Configuration for Semantic Cache
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-sentence_transformers}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
     depends_on:
       mysql:
         condition: service_healthy

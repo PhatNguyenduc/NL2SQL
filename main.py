@@ -539,6 +539,44 @@ async def reload_schema():
         )
 
 
+@app.get("/monitoring/embedding/stats", tags=["Monitoring"])
+async def get_embedding_stats():
+    """
+    Get embedding-based semantic cache statistics
+    
+    Returns:
+    - Embedding provider info (model, dimensions)
+    - Cache hit rates (exact vs semantic)
+    - Vector store statistics
+    """
+    global converter
+    
+    if not converter:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Converter not initialized"
+        )
+    
+    try:
+        if converter.semantic_cache:
+            stats = converter.semantic_cache.get_stats()
+            return {
+                "status": "ok",
+                "embedding_cache": stats
+            }
+        else:
+            return {
+                "status": "disabled",
+                "message": "Semantic cache is disabled"
+            }
+    except Exception as e:
+        logger.error(f"Embedding stats error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
