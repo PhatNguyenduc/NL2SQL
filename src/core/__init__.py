@@ -14,11 +14,34 @@ from src.core.semantic_cache import (
     get_semantic_cache,
     reset_semantic_cache
 )
+from src.core.async_llm_provider import (
+    AsyncLLMClient,
+    AsyncLLMPool,
+    get_async_llm_client,
+    reset_async_client,
+    run_with_timeout,
+    retry_async
+)
+from src.core.async_converter import (
+    AsyncNL2SQLConverter,
+    async_nl2sql
+)
 
 __all__ = [
+    # Sync
     "NL2SQLConverter", 
     "SchemaExtractor", 
     "QueryExecutor",
+    # Async
+    "AsyncNL2SQLConverter",
+    "async_nl2sql",
+    "AsyncLLMClient",
+    "AsyncLLMPool",
+    "get_async_llm_client",
+    "reset_async_client",
+    "run_with_timeout",
+    "retry_async",
+    # Embedding & Cache
     "get_embedder",
     "get_default_embedder",
     "EmbeddingProvider",

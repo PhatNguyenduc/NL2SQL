@@ -13,8 +13,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 from src.core.converter import NL2SQLConverter
+from src.core.async_converter import AsyncNL2SQLConverter
 from src.models.sql_query import DatabaseType
 from src.services.chat_service import ChatService
+from src.services.async_chat_service import AsyncChatService
 from src.api.models import (
     ChatRequest,
     ChatResponse,
@@ -25,6 +27,8 @@ from src.api.models import (
     ConversationHistoryResponse,
     BatchChatRequest,
     BatchChatResponse,
+    AsyncBatchChatRequest,
+    AsyncBatchChatResponse,
     ChatMessage
 )
 
@@ -41,6 +45,10 @@ logger = logging.getLogger(__name__)
 # Global variables for converter and chat service
 converter: Optional[NL2SQLConverter] = None
 chat_service: Optional[ChatService] = None
+
+# Async versions for high-performance endpoints
+async_converter: Optional[AsyncNL2SQLConverter] = None
+async_chat_service: Optional[AsyncChatService] = None
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -77,7 +85,7 @@ def get_database_type(connection_string: str) -> DatabaseType:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown"""
-    global converter, chat_service
+    global converter, chat_service, async_converter, async_chat_service
     
     # Startup
     logger.info("Starting NL2SQL backend server...")
@@ -108,6 +116,23 @@ async def lifespan(app: FastAPI):
         chat_service = ChatService(converter)
         logger.info("Chat service initialized")
         
+        # Initialize async components (optional, for high-performance endpoints)
+        enable_async = os.getenv("ENABLE_ASYNC_ENDPOINTS", "true").lower() == "true"
+        if enable_async:
+            try:
+                async_converter = AsyncNL2SQLConverter(
+                    connection_string=db_url,
+                    database_type=db_type,
+                    enable_few_shot=True,
+                    default_limit=default_limit
+                )
+                await async_converter.initialize()
+                async_chat_service = AsyncChatService(async_converter)
+                logger.info("✓ Async components initialized (high-performance endpoints enabled)")
+            except Exception as e:
+                logger.warning(f"Failed to initialize async components: {e}")
+                logger.info("Async endpoints will fall back to sync mode")
+        
         logger.info("✓ NL2SQL backend server started successfully")
         
     except Exception as e:
@@ -120,6 +145,8 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down NL2SQL backend server...")
     if converter:
         converter.close()
+    if async_chat_service:
+        await async_chat_service.close()
     logger.info("✓ Server shut down successfully")
 
 
@@ -255,6 +282,164 @@ async def batch_chat(request: BatchChatRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+# ============================================
+# Async High-Performance Endpoints
+# ============================================
+
+@app.post("/chat/async", response_model=ChatResponse, tags=["Async Chat"])
+async def async_chat(request: ChatRequest):
+    """
+    Process a natural language question with true async LLM calls
+    
+    This endpoint uses non-blocking async LLM calls for better performance
+    under high load. Falls back to sync mode if async is not available.
+    
+    - **message**: Natural language question
+    - **session_id**: Optional session ID for conversation tracking
+    - **execute_query**: Whether to execute the generated query
+    - **temperature**: Model temperature (0.0-1.0)
+    """
+    global async_chat_service, chat_service
+    
+    # Use async service if available, otherwise fallback to sync
+    if async_chat_service:
+        try:
+            response = await async_chat_service.process_message(
+                message=request.message,
+                session_id=request.session_id,
+                execute_query=request.execute_query,
+                temperature=request.temperature
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Async chat failed, falling back to sync: {e}")
+            # Fallback to sync
+    
+    # Fallback to sync service
+    if not chat_service:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chat service not initialized"
+        )
+    
+    try:
+        response = await chat_service.process_message(
+            message=request.message,
+            session_id=request.session_id,
+            execute_query=request.execute_query,
+            temperature=request.temperature
+        )
+        return response
+    except Exception as e:
+        logger.error(f"Error in async chat endpoint: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@app.post("/chat/batch/async", response_model=AsyncBatchChatResponse, tags=["Async Chat"])
+async def async_batch_chat(request: AsyncBatchChatRequest):
+    """
+    Process multiple questions in parallel with true async LLM calls
+    
+    Unlike the sync batch endpoint which processes sequentially,
+    this endpoint processes multiple questions in parallel using asyncio.gather,
+    significantly reducing total processing time for batch requests.
+    
+    - **messages**: List of natural language questions (max 20)
+    - **session_id**: Optional session ID
+    - **execute_queries**: Whether to execute all queries
+    - **temperature**: Model temperature
+    - **max_concurrent**: Maximum parallel LLM calls (1-10, default: 5)
+    """
+    global async_chat_service, chat_service
+    
+    processing_mode = "parallel"
+    
+    # Use async service if available
+    if async_chat_service:
+        try:
+            results = await async_chat_service.process_batch_messages(
+                messages=request.messages,
+                session_id=request.session_id,
+                execute_queries=request.execute_queries,
+                temperature=request.temperature,
+                max_concurrent=request.max_concurrent
+            )
+            
+            session_id = results[0].session_id if results else async_chat_service.generate_session_id()
+            
+            return AsyncBatchChatResponse(
+                session_id=session_id,
+                results=results,
+                total_processed=len(results),
+                total_requested=len(request.messages),
+                processing_mode=processing_mode
+            )
+        except Exception as e:
+            logger.error(f"Async batch chat failed, falling back to sync: {e}")
+            processing_mode = "sequential"
+    
+    # Fallback to sync service (sequential processing)
+    if not chat_service:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chat service not initialized"
+        )
+    
+    try:
+        results = await chat_service.process_batch_messages(
+            messages=request.messages,
+            session_id=request.session_id,
+            execute_queries=request.execute_queries,
+            temperature=request.temperature
+        )
+        
+        session_id = results[0].session_id if results else chat_service.generate_session_id()
+        
+        return AsyncBatchChatResponse(
+            session_id=session_id,
+            results=results,
+            total_processed=len(results),
+            total_requested=len(request.messages),
+            processing_mode=processing_mode
+        )
+    except Exception as e:
+        logger.error(f"Error in async batch chat endpoint: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@app.get("/async/status", tags=["Async Chat"])
+async def get_async_status():
+    """
+    Get async endpoint status and performance info
+    
+    Returns whether async endpoints are using true async LLM calls
+    or falling back to sync mode.
+    """
+    global async_chat_service, async_converter
+    
+    async_available = async_chat_service is not None
+    
+    return {
+        "async_enabled": async_available,
+        "mode": "parallel" if async_available else "sequential",
+        "description": "True async LLM calls with parallel batch processing" if async_available else "Fallback to sync mode",
+        "max_batch_size": 20 if async_available else 10,
+        "default_max_concurrent": 5 if async_available else 1,
+        "features": {
+            "non_blocking_llm": async_available,
+            "parallel_batch": async_available,
+            "concurrent_sessions": async_available,
+            "background_caching": async_available
+        }
+    }
 
 
 @app.post("/conversation/history", response_model=ConversationHistoryResponse, tags=["Conversation"])

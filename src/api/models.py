@@ -127,3 +127,36 @@ class BatchChatResponse(BaseModel):
     results: List[ChatResponse] = Field(..., description="Results for each message")
     total_processed: int = Field(..., description="Number of messages processed")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AsyncBatchChatRequest(BaseModel):
+    """Request model for async parallel batch chat processing"""
+    messages: List[str] = Field(..., description="List of user questions", min_items=1, max_items=20)
+    session_id: Optional[str] = Field(default=None, description="Session ID")
+    execute_queries: bool = Field(default=False, description="Execute all queries")
+    temperature: float = Field(default=0.1, ge=0.0, le=1.0)
+    max_concurrent: int = Field(default=5, ge=1, le=10, description="Maximum concurrent LLM calls")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "messages": [
+                    "Show all orders from last week",
+                    "Count users by status",
+                    "Top 10 products by sales"
+                ],
+                "execute_queries": False,
+                "max_concurrent": 5,
+                "temperature": 0.1
+            }
+        }
+
+
+class AsyncBatchChatResponse(BaseModel):
+    """Response model for async parallel batch chat processing"""
+    session_id: str = Field(..., description="Session ID")
+    results: List[ChatResponse] = Field(..., description="Results for each message")
+    total_processed: int = Field(..., description="Number of messages successfully processed")
+    total_requested: int = Field(..., description="Number of messages requested")
+    processing_mode: str = Field(default="parallel", description="Processing mode used")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
