@@ -11,6 +11,13 @@ import os
 from datetime import datetime
 from typing import Optional, Dict, Any
 
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+
 # Configuration - Support environment variable for Docker
 API_BASE_URL = os.getenv("API_URL", "http://localhost:8000")
 DEFAULT_SESSION_ID = "streamlit-demo"
@@ -367,5 +374,239 @@ def main():
                 st.rerun()
 
 
+def get_analytics_data() -> Optional[Dict]:
+    """Fetch analytics dashboard data from API"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/analytics/dashboard", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        st.error(f"Failed to fetch analytics: {str(e)}")
+        return None
+
+
+def reset_analytics():
+    """Reset analytics data"""
+    try:
+        response = requests.post(f"{API_BASE_URL}/analytics/reset", timeout=10)
+        return response.status_code == 200
+    except:
+        return False
+
+
+def analytics_page():
+    """Analytics Dashboard Page"""
+    st.markdown('<p class="main-header">📊 Analytics Dashboard</p>', unsafe_allow_html=True)
+    
+    # Refresh button
+    col1, col2, col3 = st.columns([1, 1, 4])
+    with col1:
+        if st.button("🔄 Refresh"):
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Reset Data"):
+            if reset_analytics():
+                st.success("Analytics data reset!")
+                st.rerun()
+    
+    # Fetch analytics data
+    data = get_analytics_data()
+    
+    if not data or data.get("status") == "error":
+        st.error("Failed to load analytics data")
+        return
+    
+    # Key Metrics Row
+    st.markdown("### 📈 Key Metrics")
+    
+    query_stats = data.get("query_stats", {})
+    performance = data.get("performance", {})
+    cache_perf = data.get("cache_performance", {})
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            label="Total Queries",
+            value=query_stats.get("total_queries", 0),
+            delta=None
+        )
+    
+    with col2:
+        success_rate = query_stats.get("success_rate", 0)
+        st.metric(
+            label="Success Rate",
+            value=f"{success_rate:.1f}%",
+            delta=None
+        )
+    
+    with col3:
+        avg_time = performance.get("avg_response_time_ms", 0)
+        st.metric(
+            label="Avg Response Time",
+            value=f"{avg_time:.0f}ms",
+            delta=None
+        )
+    
+    with col4:
+        cache_rate = cache_perf.get("cache_hit_rate", 0)
+        st.metric(
+            label="Cache Hit Rate",
+            value=f"{cache_rate:.1f}%",
+            delta=None
+        )
+    
+    st.markdown("---")
+    
+    # Charts Row 1
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🎯 Query Success vs Failure")
+        success = query_stats.get("successful_queries", 0)
+        failed = query_stats.get("failed_queries", 0)
+        
+        if PLOTLY_AVAILABLE and (success > 0 or failed > 0):
+            fig = go.Figure(data=[go.Pie(
+                labels=['Successful', 'Failed'],
+                values=[success, failed],
+                hole=.4,
+                marker_colors=['#28a745', '#dc3545']
+            )])
+            fig.update_layout(height=300, margin=dict(t=20, b=20, l=20, r=20))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info(f"✅ Successful: {success} | ❌ Failed: {failed}")
+    
+    with col2:
+        st.markdown("### 💾 Cache vs LLM Calls")
+        cache_hits = cache_perf.get("cache_hits", 0)
+        llm_calls = cache_perf.get("llm_calls", 0)
+        
+        if PLOTLY_AVAILABLE and (cache_hits > 0 or llm_calls > 0):
+            fig = go.Figure(data=[go.Pie(
+                labels=['Cache Hits', 'LLM Calls'],
+                values=[cache_hits, llm_calls],
+                hole=.4,
+                marker_colors=['#17a2b8', '#ffc107']
+            )])
+            fig.update_layout(height=300, margin=dict(t=20, b=20, l=20, r=20))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info(f"💾 Cache Hits: {cache_hits} | 🤖 LLM Calls: {llm_calls}")
+    
+    st.markdown("---")
+    
+    # Charts Row 2
+    col1, col2 = st.columns(2)
+    
+    usage = data.get("usage_patterns", {})
+    
+    with col1:
+        st.markdown("### 📋 Table Usage")
+        table_usage = usage.get("table_usage", {})
+        if table_usage:
+            if PLOTLY_AVAILABLE:
+                df = pd.DataFrame([
+                    {"Table": k, "Queries": v}
+                    for k, v in table_usage.items()
+                ])
+                fig = px.bar(df, x="Table", y="Queries", color="Queries",
+                           color_continuous_scale="Blues")
+                fig.update_layout(height=300, margin=dict(t=20, b=20, l=20, r=20))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.dataframe(pd.DataFrame([
+                    {"Table": k, "Queries": v}
+                    for k, v in table_usage.items()
+                ]))
+        else:
+            st.info("No table usage data yet")
+    
+    with col2:
+        st.markdown("### 🎚️ Confidence Distribution")
+        conf_dist = usage.get("confidence_distribution", {})
+        if conf_dist:
+            if PLOTLY_AVAILABLE:
+                fig = go.Figure(data=[go.Bar(
+                    x=['High (≥80%)', 'Medium (50-79%)', 'Low (<50%)'],
+                    y=[conf_dist.get("high", 0), conf_dist.get("medium", 0), conf_dist.get("low", 0)],
+                    marker_color=['#28a745', '#ffc107', '#dc3545']
+                )])
+                fig.update_layout(height=300, margin=dict(t=20, b=20, l=20, r=20))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.write(f"High: {conf_dist.get('high', 0)}, Medium: {conf_dist.get('medium', 0)}, Low: {conf_dist.get('low', 0)}")
+        else:
+            st.info("No confidence data yet")
+    
+    st.markdown("---")
+    
+    # Hourly Trend
+    st.markdown("### ⏰ Hourly Query Trend")
+    hourly = usage.get("hourly_queries", {})
+    if hourly:
+        if PLOTLY_AVAILABLE:
+            df = pd.DataFrame([
+                {"Hour": k, "Queries": v}
+                for k, v in sorted(hourly.items())
+            ])
+            fig = px.line(df, x="Hour", y="Queries", markers=True)
+            fig.update_layout(height=250, margin=dict(t=20, b=20, l=20, r=20))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.dataframe(pd.DataFrame([
+                {"Hour": k, "Queries": v}
+                for k, v in sorted(hourly.items())
+            ]))
+    else:
+        st.info("No hourly data yet")
+    
+    st.markdown("---")
+    
+    # Error Analysis
+    errors = data.get("errors", {})
+    if errors.get("total_errors", 0) > 0:
+        st.markdown("### ⚠️ Error Analysis")
+        error_types = errors.get("error_types", {})
+        if error_types:
+            df = pd.DataFrame([
+                {"Error Type": k, "Count": v}
+                for k, v in error_types.items()
+            ])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    # Cache Details
+    with st.expander("🔧 Cache Details"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Semantic Cache**")
+            semantic = data.get("semantic_cache", {})
+            if semantic:
+                st.json(semantic)
+            else:
+                st.info("Semantic cache disabled or no data")
+        
+        with col2:
+            st.markdown("**Query Plan Cache**")
+            plan_cache = data.get("query_plan_cache", {})
+            if plan_cache:
+                st.json(plan_cache)
+            else:
+                st.info("Query plan cache disabled or no data")
+
+
 if __name__ == "__main__":
-    main()
+    # Page navigation
+    page = st.sidebar.radio(
+        "Navigation",
+        ["💬 Chat", "📊 Analytics"],
+        label_visibility="collapsed"
+    )
+    
+    if page == "💬 Chat":
+        main()
+    else:
+        analytics_page()

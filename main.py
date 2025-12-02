@@ -4,6 +4,7 @@ import os
 import time
 import uuid
 import logging
+from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional
 from fastapi import FastAPI, HTTPException, status, Request
@@ -225,6 +226,8 @@ async def chat(request: ChatRequest):
             detail="Chat service not initialized"
         )
     
+    start_time = time.time()
+    
     try:
         response = await chat_service.process_message(
             message=request.message,
@@ -232,9 +235,39 @@ async def chat(request: ChatRequest):
             execute_query=request.execute_query,
             temperature=request.temperature
         )
+        
+        # Record analytics
+        execution_time_ms = (time.time() - start_time) * 1000
+        is_from_cache = "cache" in (response.sql_generation.explanation or "").lower()
+        query_type = "unknown"
+        if response.sql_generation.potential_issues:
+            for issue in response.sql_generation.potential_issues:
+                if "pattern:" in issue.lower():
+                    query_type = "cached_plan"
+                    break
+        
+        record_analytics(
+            success=response.execution.success if response.execution else True,
+            execution_time_ms=execution_time_ms,
+            from_cache=is_from_cache,
+            query_type=query_type,
+            tables_used=response.sql_generation.tables_used,
+            confidence=response.sql_generation.confidence,
+            error_type=response.execution.error_message if response.execution and not response.execution.success else None
+        )
+        
         return response
         
     except Exception as e:
+        # Record failed analytics
+        execution_time_ms = (time.time() - start_time) * 1000
+        record_analytics(
+            success=False,
+            execution_time_ms=execution_time_ms,
+            from_cache=False,
+            error_type=str(type(e).__name__)
+        )
+        
         logger.error(f"Error in chat endpoint: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -617,6 +650,182 @@ async def get_active_sessions():
         "total_sessions": chat_service.get_session_count(),
         "session_ids": chat_service.get_all_sessions()
     }
+
+
+# ============================================
+# Analytics Dashboard Endpoints
+# ============================================
+
+# In-memory analytics store (for demo - use Redis/DB in production)
+analytics_data = {
+    "total_queries": 0,
+    "successful_queries": 0,
+    "failed_queries": 0,
+    "total_execution_time_ms": 0,
+    "llm_calls": 0,
+    "cache_hits": 0,
+    "query_types": {},
+    "hourly_queries": {},
+    "table_usage": {},
+    "error_types": {},
+    "confidence_distribution": {"high": 0, "medium": 0, "low": 0}
+}
+
+
+def record_analytics(
+    success: bool,
+    execution_time_ms: float,
+    from_cache: bool,
+    query_type: str = "unknown",
+    tables_used: list = None,
+    confidence: float = 0.0,
+    error_type: str = None
+):
+    """Record analytics for a query"""
+    from datetime import datetime
+    
+    analytics_data["total_queries"] += 1
+    if success:
+        analytics_data["successful_queries"] += 1
+    else:
+        analytics_data["failed_queries"] += 1
+        if error_type:
+            analytics_data["error_types"][error_type] = analytics_data["error_types"].get(error_type, 0) + 1
+    
+    analytics_data["total_execution_time_ms"] += execution_time_ms
+    
+    if from_cache:
+        analytics_data["cache_hits"] += 1
+    else:
+        analytics_data["llm_calls"] += 1
+    
+    # Query type distribution
+    analytics_data["query_types"][query_type] = analytics_data["query_types"].get(query_type, 0) + 1
+    
+    # Hourly distribution
+    hour = datetime.now().strftime("%Y-%m-%d %H:00")
+    analytics_data["hourly_queries"][hour] = analytics_data["hourly_queries"].get(hour, 0) + 1
+    
+    # Table usage
+    if tables_used:
+        for table in tables_used:
+            analytics_data["table_usage"][table] = analytics_data["table_usage"].get(table, 0) + 1
+    
+    # Confidence distribution
+    if confidence >= 0.8:
+        analytics_data["confidence_distribution"]["high"] += 1
+    elif confidence >= 0.5:
+        analytics_data["confidence_distribution"]["medium"] += 1
+    else:
+        analytics_data["confidence_distribution"]["low"] += 1
+
+
+@app.get("/analytics/dashboard", tags=["Analytics"])
+async def get_analytics_dashboard():
+    """
+    Get comprehensive analytics dashboard data
+    
+    Returns:
+    - Query statistics (total, success, fail rates)
+    - Performance metrics (avg response time)
+    - Cache performance (hit rates, LLM calls saved)
+    - Usage patterns (query types, table usage, hourly trends)
+    - System health metrics
+    """
+    global converter, analytics_data
+    
+    try:
+        dashboard = {
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+            
+            # Query Statistics
+            "query_stats": {
+                "total_queries": analytics_data["total_queries"],
+                "successful_queries": analytics_data["successful_queries"],
+                "failed_queries": analytics_data["failed_queries"],
+                "success_rate": (
+                    analytics_data["successful_queries"] / analytics_data["total_queries"] * 100
+                    if analytics_data["total_queries"] > 0 else 0
+                )
+            },
+            
+            # Performance Metrics
+            "performance": {
+                "avg_response_time_ms": (
+                    analytics_data["total_execution_time_ms"] / analytics_data["total_queries"]
+                    if analytics_data["total_queries"] > 0 else 0
+                ),
+                "total_execution_time_ms": analytics_data["total_execution_time_ms"]
+            },
+            
+            # Cache Performance
+            "cache_performance": {
+                "cache_hits": analytics_data["cache_hits"],
+                "llm_calls": analytics_data["llm_calls"],
+                "cache_hit_rate": (
+                    analytics_data["cache_hits"] / analytics_data["total_queries"] * 100
+                    if analytics_data["total_queries"] > 0 else 0
+                ),
+                "llm_calls_saved": analytics_data["cache_hits"]
+            },
+            
+            # Usage Patterns
+            "usage_patterns": {
+                "query_types": analytics_data["query_types"],
+                "table_usage": dict(sorted(
+                    analytics_data["table_usage"].items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:10]),  # Top 10 tables
+                "hourly_queries": dict(sorted(analytics_data["hourly_queries"].items())[-24:]),  # Last 24 hours
+                "confidence_distribution": analytics_data["confidence_distribution"]
+            },
+            
+            # Error Analysis
+            "errors": {
+                "total_errors": analytics_data["failed_queries"],
+                "error_types": analytics_data["error_types"]
+            }
+        }
+        
+        # Add cache-specific stats if available
+        if converter:
+            if converter.semantic_cache:
+                dashboard["semantic_cache"] = converter.semantic_cache.get_stats()
+            if converter.query_plan_cache:
+                dashboard["query_plan_cache"] = converter.query_plan_cache.get_stats()
+        
+        return dashboard
+        
+    except Exception as e:
+        logger.error(f"Analytics dashboard error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@app.post("/analytics/reset", tags=["Analytics"])
+async def reset_analytics():
+    """Reset all analytics data"""
+    global analytics_data
+    
+    analytics_data = {
+        "total_queries": 0,
+        "successful_queries": 0,
+        "failed_queries": 0,
+        "total_execution_time_ms": 0,
+        "llm_calls": 0,
+        "cache_hits": 0,
+        "query_types": {},
+        "hourly_queries": {},
+        "table_usage": {},
+        "error_types": {},
+        "confidence_distribution": {"high": 0, "medium": 0, "low": 0}
+    }
+    
+    return {"status": "ok", "message": "Analytics data reset successfully"}
 
 
 # ============================================

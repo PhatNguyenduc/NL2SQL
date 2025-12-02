@@ -5,22 +5,115 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 
-🚀 **Backend API** chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries cho MySQL một cách chính xác, an toàn và thông minh.
+🚀 **High-Performance Backend API** chuyển đổi câu hỏi tiếng tự nhiên thành SQL queries với kiến trúc tối ưu, multi-layer caching, và hỗ trợ đa LLM providers.
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         NL2SQL System                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
+│  │Streamlit │───▶│ FastAPI  │───▶│  Redis   │───▶│  MySQL   │  │
+│  │ Frontend │    │ Backend  │    │  Cache   │    │ Database │  │
+│  │  :8501   │◀───│  :8000   │◀───│  :6379   │◀───│  :3307   │  │
+│  └──────────┘    └──────────┘    └──────────┘    └──────────┘  │
+│                        │                                         │
+│         ┌──────────────┼──────────────┐                         │
+│         ▼              ▼              ▼                         │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                  │
+│  │  Semantic  │ │Query Plan  │ │  General   │                  │
+│  │   Cache    │ │   Cache    │ │   Cache    │                  │
+│  │(Embedding) │ │ (Pattern)  │ │  (Redis)   │                  │
+│  └────────────┘ └────────────┘ └────────────┘                  │
+│                        │                                         │
+│                        ▼                                         │
+│        ┌─────────────────────────────────┐                      │
+│        │      Multi-LLM Providers        │                      │
+│        │  Gemini │ OpenAI │ Claude │ ... │                      │
+│        └─────────────────────────────────┘                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> 📚 **Chi tiết kiến trúc**: [docs/architecture.md](docs/architecture.md)
 
 ---
 
 ## ✨ Tính năng nổi bật
 
-- 🤖 **Multi-LLM Provider**: OpenAI, Gemini (FREE), OpenRouter, Claude, Azure OpenAI
-- 🔄 **Auto Fallback**: Tự động chuyển provider nếu không tìm thấy API key
-- 🐳 **Full Docker Stack**: MySQL + API + phpMyAdmin trong 1 lệnh
-- 🚀 **REST API**: FastAPI với Swagger docs tự động
-- 💬 **Chat Interface**: Session-based conversation với history
-- 🎨 **Streamlit UI**: Interactive web demo (frontend/streamlit_app.py)
-- 🛡️ **An toàn tuyệt đối**: Chỉ SELECT, chặn mọi thao tác nguy hiểm
-- 📊 **Schema Auto-load**: Tự động phân tích cấu trúc database
-- ⚡ **Few-shot Learning**: Tăng độ chính xác với examples
-- 🎯 **Sample Data**: 24 tables ecommerce data sẵn sàng
+### 🚀 Performance Optimizations
+
+- **3-Layer Caching**: Semantic Cache + Query Plan Cache + Redis
+- **Async LLM Calls**: Non-blocking I/O, 4x throughput improvement
+- **Connection Pooling**: Optimized database connections
+- **Schema Optimization**: 60-70% token reduction
+
+### 🤖 Intelligent SQL Generation
+
+- **Multi-LLM Provider**: OpenAI, Gemini (FREE), OpenRouter, Claude, Azure
+- **Auto-Fallback**: Tự động chuyển provider khi cần
+- **SQL Execution Feedback**: Tự động retry với error context
+- **Query Type Classification**: Optimize prompt per query type
+
+### 📊 Monitoring & Analytics
+
+- **Real-time Dashboard**: Query stats, cache performance, error analysis
+- **Hourly Trends**: Visualize usage patterns
+- **Confidence Tracking**: Monitor SQL generation quality
+
+### 🛡️ Security & Reliability
+
+- **Read-only Enforcement**: Chỉ SELECT queries
+- **SQL Injection Prevention**: Multi-layer validation
+- **Graceful Degradation**: Auto-recovery mechanisms
+
+---
+
+## ⚡ Performance Highlights
+
+| Feature            | Improvement    | How                          |
+| ------------------ | -------------- | ---------------------------- |
+| **Cache Hit**      | ~50ms response | Semantic similarity matching |
+| **Token Usage**    | -60-70%        | Schema optimization          |
+| **Throughput**     | 4x             | Async LLM calls              |
+| **Error Recovery** | Auto-fix       | SQL execution feedback       |
+
+### Caching Strategy
+
+```
+Question: "How many users?"
+         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 1: SEMANTIC CACHE                                      │
+│ "Count all users" ≈ "How many users?" (similarity: 0.95)    │
+│ → Return cached SQL instantly (~50ms)                        │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 2: QUERY PLAN CACHE                                    │
+│ "Top 5 users" → TOP_N pattern template                      │
+│ "Top 10 products" → Same template, different params         │
+│ → Fill template without LLM call                            │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 3: GENERAL CACHE (Redis)                               │
+│ Schema, prompts, execution results                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔧 Technical Stack
+
+| Component           | Technology                     | Purpose                        |
+| ------------------- | ------------------------------ | ------------------------------ |
+| **API Framework**   | FastAPI + Uvicorn              | High-performance async API     |
+| **LLM Integration** | Instructor + httpx             | Structured output, async calls |
+| **Database**        | MySQL 8.0 + SQLAlchemy         | Connection pooling, ORM        |
+| **Caching**         | Redis 7 + In-memory            | Multi-layer caching            |
+| **Embeddings**      | OpenAI / Sentence-Transformers | Semantic similarity            |
+| **Frontend**        | Streamlit + Plotly             | Interactive UI + Charts        |
+| **Container**       | Docker Compose                 | Full stack deployment          |
 
 ---
 
@@ -504,42 +597,130 @@ python main.py
 
 ```
 NL2SQL/
-├── main.py                          # FastAPI entry point
-├── setup_docker.ps1                 # Automated Docker setup
-├── docker-compose.full.yml          # Full stack Docker config
+├── main.py                          # FastAPI entry point + Analytics
+├── docker-compose.yml               # Full stack Docker config
 ├── Dockerfile                       # API container image
 ├── requirements.txt                 # Python dependencies
-├── .env                            # Environment config
 │
 ├── src/
 │   ├── api/
-│   │   └── models.py               # API request/response models
+│   │   └── models.py               # API request/response models (Pydantic)
+│   │
 │   ├── services/
-│   │   └── chat_service.py         # Chat business logic
-│   ├── core/
-│   │   ├── converter.py            # Main NL2SQL converter
-│   │   ├── llm_provider.py         # Multi-LLM adapter
+│   │   ├── chat_service.py         # Chat logic + SQL Execution Feedback
+│   │   └── async_chat_service.py   # Async version for high throughput
+│   │
+│   ├── core/                        # 🔧 CORE COMPONENTS
+│   │   ├── converter.py            # Main NL2SQL converter pipeline
+│   │   ├── async_converter.py      # Async version (4x throughput)
+│   │   ├── llm_provider.py         # Multi-LLM adapter (5 providers)
 │   │   ├── schema_extractor.py     # DB schema analysis
-│   │   └── query_executor.py       # Safe SQL execution
-│   ├── models/
-│   │   └── sql_query.py            # Core data models
+│   │   ├── schema_optimizer.py     # Token reduction (60-70%)
+│   │   ├── query_executor.py       # Safe SQL execution
+│   │   ├── query_preprocessor.py   # Query classification
+│   │   ├── sql_validator.py        # SQL validation + post-processing
+│   │   ├── prompt_builder.py       # Optimized prompt construction
+│   │   │
+│   │   ├── cache_manager.py        # General Redis cache
+│   │   ├── semantic_cache.py       # Embedding-based cache (Layer 1)
+│   │   ├── query_plan_cache.py     # Pattern-based cache (Layer 2)
+│   │   ├── embedding_provider.py   # Embedding generation
+│   │   └── schema_version_manager.py # Cache invalidation
+│   │
 │   ├── prompts/
 │   │   ├── system_prompt.py        # LLM system prompts
 │   │   └── few_shot_examples.py    # Example queries
-│   └── utils/
-│       ├── validation.py           # SQL validation
-│       └── formatting.py           # SQL formatting
+│   │
+│   └── models/
+│       └── sql_query.py            # Core data models
 │
-├── resources/
-│   └── data/
-│       ├── ecommerce_schema.sql    # MySQL schema (24 tables)
-│       └── generate_data.py        # Sample data generator
+├── frontend/
+│   ├── streamlit_app.py            # Chat UI + Analytics Dashboard
+│   └── requirements.txt            # Frontend dependencies
 │
 ├── docs/
+│   ├── architecture.md             # 🏗️ Technical deep-dive
 │   └── llm_providers.md            # LLM provider guide
 │
-├── tests/                           # Unit & integration tests
-└── examples/                        # Usage examples
+└── resources/
+    └── data/
+        ├── ecommerce_schema.sql    # MySQL schema (24 tables)
+        └── seed.py                 # Sample data generator
+```
+
+---
+
+## 🔬 Key Technical Decisions
+
+### 1. Why Multi-Layer Caching?
+
+```
+Problem: LLM calls are expensive ($) and slow (2-10s)
+Solution: 3-layer cache hierarchy
+
+Layer 1 - Semantic Cache:
+  "How many users?" ≈ "Count all users"
+  → Same meaning, different words
+  → Use embeddings to find similar questions
+  → Return cached SQL (saves LLM call)
+
+Layer 2 - Query Plan Cache:
+  "Top 5 users by orders" → TOP_N pattern
+  "Top 10 products by sales" → Same pattern!
+  → Extract pattern, fill template
+  → No LLM needed for common patterns
+
+Layer 3 - General Cache:
+  → Schema, prompts, results in Redis
+  → Fast key-value lookup
+```
+
+### 2. Why Instructor for LLM?
+
+```python
+# Without Instructor (error-prone):
+response = client.chat.completions.create(...)
+try:
+    data = json.loads(response.content)
+    sql = data.get("query", "")  # Might fail!
+except: ...
+
+# With Instructor (guaranteed structure):
+response = client.chat.completions.create(
+    response_model=SQLQuery,  # Pydantic model
+    ...
+)
+# response.query, response.confidence always exist!
+```
+
+### 3. Why SQL Execution Feedback?
+
+```
+Problem: LLM generates valid-looking SQL but fails on execution
+
+Example:
+  Input: "Top 5 users this month AND last month"
+  LLM Output: SELECT ... ORDER BY x LIMIT 5 UNION ALL SELECT ...
+  MySQL Error: Syntax error near 'UNION'
+
+Solution - Feedback Loop:
+  1. Execute SQL
+  2. If error → Send error message back to LLM
+  3. LLM corrects: (SELECT ... LIMIT 5) UNION ALL (SELECT ... LIMIT 5)
+  4. Retry (max 2 times)
+```
+
+### 4. Why Schema Optimization?
+
+```
+Problem: 24 tables × 10 columns = 240 items → Too many tokens
+
+Solution:
+  1. Compact format: table.column (no data types when not needed)
+  2. Relevant filtering: Only include tables mentioned in question
+  3. FK mapping: Help LLM understand JOINs
+
+Result: 60-70% token reduction → Faster + Cheaper
 ```
 
 ---
@@ -608,14 +789,42 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 🗺️ Roadmap
 
+- [x] ~~Multi-LLM Provider Support~~
+- [x] ~~Multi-Layer Caching (Semantic + Query Plan)~~
+- [x] ~~Analytics Dashboard~~
+- [x] ~~SQL Execution Feedback Loop~~
+- [x] ~~Async High-Performance Endpoints~~
 - [ ] Support for PostgreSQL
 - [ ] CLI interface
-- [ ] Web UI dashboard
 - [ ] Query optimization suggestions
-- [ ] Multi-language support (Vietnamese)
+- [ ] Multi-language support (Vietnamese NLP)
 - [ ] Export to CSV/Excel
 - [ ] Query templates library
 - [ ] User authentication & permissions
+
+---
+
+## 📊 Monitoring & Analytics
+
+Access the **Analytics Dashboard** at http://localhost:8501 (navigate to 📊 Analytics)
+
+**Available Metrics:**
+
+- Query statistics (total, success rate, errors)
+- Response time distribution
+- Cache hit rates (semantic vs LLM calls)
+- Table usage frequency
+- Confidence score distribution
+- Hourly query trends
+- Error type analysis
+
+**API Endpoints:**
+
+```http
+GET /analytics/dashboard     # Full analytics data
+GET /monitoring/cache/all    # All cache statistics
+GET /health                  # System health check
+```
 
 ---
 
