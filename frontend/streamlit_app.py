@@ -64,13 +64,15 @@ st.markdown("""
         font-weight: bold;
     }
     .message-user {
-        background-color: #e3f2fd;
+        background-color: #0d47a1 !important;  /* Dark blue */
+        color: #ffffff !important;
         padding: 1rem;
         border-radius: 10px;
         margin: 0.5rem 0;
     }
     .message-assistant {
-        background-color: #f5f5f5;
+        background-color: #0d47a1 !important;  /* Dark blue */
+        color: #ffffff !important;
         padding: 1rem;
         border-radius: 10px;
         margin: 0.5rem 0;
