@@ -1,14 +1,15 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = "http://localhost:8000";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 30000,
 });
+//commit fake
 
 // Types matching backend API models
 export interface SQLGenerationResponse {
@@ -64,25 +65,25 @@ export interface HealthResponse {
 export const api = {
   // Health check
   async getHealth(): Promise<HealthResponse> {
-    const response = await apiClient.get<HealthResponse>('/health');
+    const response = await apiClient.get<HealthResponse>("/health");
     return response.data;
   },
 
   // Chat endpoint - main NL2SQL conversion
   async chat(request: ChatRequest): Promise<ChatResponse> {
-    const response = await apiClient.post<ChatResponse>('/chat', request);
+    const response = await apiClient.post<ChatResponse>("/chat", request);
     return response.data;
   },
 
   // Get database schema
   async getSchema(): Promise<SchemaResponse> {
-    const response = await apiClient.get<SchemaResponse>('/schema');
+    const response = await apiClient.get<SchemaResponse>("/schema");
     return response.data;
   },
 
   // Get conversation history
   async getConversationHistory(sessionId: string, limit: number = 50) {
-    const response = await apiClient.post('/conversation/history', {
+    const response = await apiClient.post("/conversation/history", {
       session_id: sessionId,
       limit,
     });
@@ -91,15 +92,14 @@ export const api = {
 
   // Analytics endpoints
   async getAnalyticsDashboard() {
-    const response = await apiClient.get('/analytics/dashboard');
+    const response = await apiClient.get("/analytics/dashboard");
     return response.data;
   },
 
   async resetAnalytics() {
-    const response = await apiClient.post('/analytics/reset');
+    const response = await apiClient.post("/analytics/reset");
     return response.data;
   },
 };
 
 export default api;
-
