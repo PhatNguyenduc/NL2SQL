@@ -100,17 +100,57 @@ export const Home: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tableSearch, setTableSearch] = useState<{ [key: string]: string }>({});
   const [zoomedTable, setZoomedTable] = useState<QueryExecutionResponse | null>(null);
+  const [searchPopup, setSearchPopup] = useState<{ tableId: string; isOpen: boolean; position?: { top: number; left: number } }>({ tableId: "", isOpen: false });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Close zoom modal on ESC key
+  // Close zoom modal and search popup on ESC key
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && zoomedTable) {
-        setZoomedTable(null);
+      if (event.key === "Escape") {
+        if (zoomedTable) {
+          setZoomedTable(null);
+        }
+        if (searchPopup.isOpen) {
+          setSearchPopup({ tableId: "", isOpen: false });
+        }
       }
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [zoomedTable]);
+  }, [zoomedTable, searchPopup.isOpen]);
+
+  // Global mouse move handler for dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      const newPosition = {
+        top: Math.max(0, Math.min(e.clientY - dragOffset.y, window.innerHeight - 200)),
+        left: Math.max(0, Math.min(e.clientX - dragOffset.x, window.innerWidth - 256)),
+      };
+      setSearchPopup((prev) => {
+        if (!prev.position) return prev;
+        return {
+          ...prev,
+          position: newPosition,
+        };
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove, { passive: false });
+    document.addEventListener("mouseup", handleMouseUp);
+    
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
 
   // Auto scroll to bottom when new message is added
   useEffect(() => {
@@ -225,7 +265,7 @@ export const Home: React.FC = () => {
     }
   };
 
-  const downloadCSV = (execution: QueryExecutionResponse) => {
+  const downloadCSV = async (execution: QueryExecutionResponse) => {
     if (!execution.rows || execution.rows.length === 0) return;
 
     const columns = execution.columns || Object.keys(execution.rows[0] || {});
@@ -243,14 +283,80 @@ export const Home: React.FC = () => {
 
     const csvContent = [headers, ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const defaultFileName = `query_result_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+
+    // Try to use File System Access API (allows choosing save location)
+    // @ts-ignore - File System Access API types may not be available
+    if ('showSaveFilePicker' in window) {
+      try {
+        // @ts-ignore
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: defaultFileName,
+          types: [{
+            description: 'CSV files',
+            accept: {
+              'text/csv': ['.csv'],
+            },
+          }],
+        });
+
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err: any) {
+        // User cancelled or error occurred, fall back to default download
+        if (err.name !== 'AbortError') {
+          console.warn('File System Access API failed, using fallback:', err);
+        } else {
+          // User cancelled, don't download
+          return;
+        }
+      }
+    }
+
+    // Fallback: Use traditional download (browser will use default download location)
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `query_result_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`);
+    link.setAttribute("download", defaultFileName);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const escapeRegex = (str: string) => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      return <>{text}</>;
+    }
+    
+    const trimmedTerm = searchTerm.trim();
+    const escapedTerm = escapeRegex(trimmedTerm);
+    
+    try {
+      const parts = text.split(new RegExp(`(${escapedTerm})`, 'gi'));
+      return (
+        <>
+          {parts.map((part, i) => 
+            part.toLowerCase() === trimmedTerm.toLowerCase() ? (
+              <mark key={i} className="bg-green-500/30 text-green-200 rounded px-0.5">
+                {part}
+              </mark>
+            ) : (
+              part
+            )
+          )}
+        </>
+      );
+    } catch (e) {
+      return <>{text}</>;
+    }
   };
 
   const renderTable = (execution: QueryExecutionResponse, tableId?: string, isZoomed: boolean = false) => {
@@ -263,19 +369,17 @@ export const Home: React.FC = () => {
     }
 
     const columns = execution.columns || Object.keys(execution.rows[0] || {});
-    const searchTerm = tableId ? (tableSearch[tableId] || "").toLowerCase() : "";
     
-    const filteredRows = searchTerm
-      ? execution.rows.filter((row) =>
-          columns.some((col) =>
-            String(row[col] ?? "").toLowerCase().includes(searchTerm)
-          )
-        )
-      : execution.rows;
+    // Get search term with strict checking
+    let searchTerm = "";
+    if (tableId && tableId in tableSearch && tableSearch[tableId]) {
+      const raw = String(tableSearch[tableId]).trim();
+      searchTerm = raw.toLowerCase();
+    }
 
     return (
       <div className={isZoomed ? "h-full" : "overflow-auto max-h-[400px]"}>
-        <table className={`min-w-full ${isZoomed ? "text-sm" : "text-xs"}`}>
+        <table key={`${tableId}-${searchTerm}`} className={`min-w-full ${isZoomed ? "text-sm" : "text-xs"}`}>
           <thead className="bg-[#0f1724] border-b border-gray-800 text-gray-300 sticky top-0 z-10">
             <tr>
               {columns.map((col) => (
@@ -284,23 +388,29 @@ export const Home: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map((row, idx) => (
+            {execution.rows.map((row, idx) => (
               <tr
                 key={idx}
                 className={idx % 2 === 0 ? "bg-[#05070c]" : "bg-[#070b12]"}
               >
-                {columns.map((col) => (
-                  <Td key={col}>{String(row[col] ?? "")}</Td>
-                ))}
+                {columns.map((col) => {
+                  const cellValue = String(row[col] ?? "");
+                  // Only highlight if searchTerm is non-empty and matches
+                  const shouldHighlight = searchTerm !== "" && searchTerm.length > 0;
+                  const hasMatch = shouldHighlight && cellValue.toLowerCase().includes(searchTerm);
+                  
+                  return (
+                    <Td key={col} highlight={hasMatch}>
+                      {hasMatch && tableId && tableSearch[tableId] 
+                        ? highlightText(cellValue, tableSearch[tableId]) 
+                        : cellValue}
+                    </Td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
-        {searchTerm && filteredRows.length === 0 && (
-          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
-            No results found
-          </div>
-        )}
       </div>
     );
   };
@@ -311,7 +421,7 @@ export const Home: React.FC = () => {
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
-          className="fixed left-4 top-4 z-50 glow-btn w-8 h-8 rounded-lg flex items-center justify-center text-xs shadow-lg"
+          className="fixed left-4 top-4 z-50 glow-btn w-8 h-8 rounded-lg flex items-center justify-center text-xs shadow-lg animate-fade-in"
           title="Show sidebar"
         >
           ▶
@@ -320,20 +430,28 @@ export const Home: React.FC = () => {
 
       {/* Sidebar */}
       <aside
-        className={`bg-[#0b1018] border-r border-gray-800 flex flex-col h-full overflow-hidden transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "w-64" : "w-0"
+        className={`bg-[#0b1018] border-r border-gray-800 flex flex-col h-full overflow-hidden ${
+          sidebarOpen 
+            ? "w-64 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" 
+            : "w-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,1,1)]"
         }`}
+        style={{ 
+          willChange: 'width',
+          minWidth: sidebarOpen ? '16rem' : '0'
+        }}
       >
-        <div className={`h-16 flex items-center justify-between px-5 border-b border-gray-800 flex-shrink-0 transition-opacity duration-200 ${
-          sidebarOpen ? "opacity-100 delay-100" : "opacity-0"
+        <div className={`h-16 flex items-center justify-between px-5 border-b border-gray-800 flex-shrink-0 transition-opacity whitespace-nowrap ${
+          sidebarOpen 
+            ? "opacity-100 duration-300 delay-200 ease-out" 
+            : "opacity-0 duration-150 delay-0 ease-in"
         }`}>
-          <div className="flex items-center min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-400 flex items-center justify-center text-xs font-semibold">
+          <div className="flex items-center min-w-0 overflow-hidden">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-400 flex items-center justify-center text-xs font-semibold flex-shrink-0">
               NL
             </div>
-            <div className="ml-3">
-              <div className="text-sm font-semibold">NL2SQL Assistant</div>
-              <div className="text-[11px] text-gray-400">Natural language → SQL</div>
+            <div className="ml-3 overflow-hidden">
+              <div className="text-sm font-semibold truncate">NL2SQL Assistant</div>
+              <div className="text-[11px] text-gray-400 truncate">Natural language → SQL</div>
             </div>
           </div>
           <button
@@ -345,8 +463,10 @@ export const Home: React.FC = () => {
           </button>
         </div>
 
-        <nav className={`flex-1 py-4 overflow-y-auto min-h-0 text-[15px] leading-relaxed transition-opacity duration-200 ${
-          sidebarOpen ? "opacity-100 delay-100" : "opacity-0"
+        <nav className={`flex-1 py-4 overflow-y-auto min-h-0 text-[15px] leading-relaxed transition-opacity ${
+          sidebarOpen 
+            ? "opacity-100 duration-300 delay-200 ease-out" 
+            : "opacity-0 duration-150 delay-0 ease-in"
         }`}>
           <NavItem
             active={currentPage === "chat"}
@@ -388,34 +508,42 @@ export const Home: React.FC = () => {
             <div className="bg-[#0f1724] border border-gray-700/50 rounded-xl p-3">
               <button
                 onClick={() => setShowApiInfo(!showApiInfo)}
-                className="w-full text-sm font-semibold text-gray-200 mb-2 flex items-center space-x-2"
+                className="w-full text-sm font-semibold text-gray-200 flex items-center space-x-2"
               >
                 <span className="text-lg">📊</span>
                 <span>API Info</span>
-                <span className="ml-auto">{showApiInfo ? "▼" : "▶"}</span>
+                <span className={`ml-auto transition-transform duration-300 ${showApiInfo ? "rotate-90" : "rotate-0"}`}>
+                  ▶
+                </span>
               </button>
-              {showApiInfo && apiHealth?.status === "healthy" && (
-                <div className="mt-2 space-y-1 text-sm text-gray-300">
-                  <div>
-                    <span className="text-gray-400">LLM Provider:</span>{" "}
-                    <span className="text-gray-200">{apiHealth.llm_provider || "N/A"}</span>
+              <div 
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  showApiInfo ? "max-h-40 opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
+                }`}
+              >
+                {apiHealth?.status === "healthy" && (
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <div>
+                      <span className="text-gray-400">LLM Provider:</span>{" "}
+                      <span className="text-gray-200">{apiHealth.llm_provider || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Model:</span>{" "}
+                      <span className="text-gray-200">{apiHealth.llm_model || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Database:</span>{" "}
+                      <span className={apiHealth.database_connected ? "text-green-400" : "text-red-400"}>
+                        {apiHealth.database_connected ? "✅" : "❌"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Tables:</span>{" "}
+                      <span className="text-gray-200">{apiHealth.tables || 0}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-400">Model:</span>{" "}
-                    <span className="text-gray-200">{apiHealth.llm_model || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Database:</span>{" "}
-                    <span className={apiHealth.database_connected ? "text-green-400" : "text-red-400"}>
-                      {apiHealth.database_connected ? "✅" : "❌"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Tables:</span>{" "}
-                    <span className="text-gray-200">{apiHealth.tables || 0}</span>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* LLM Temperature */}
@@ -464,15 +592,17 @@ export const Home: React.FC = () => {
           </div>
         </nav>
 
-        <div className={`border-t border-gray-800 p-4 flex items-center text-xs text-gray-400 flex-shrink-0 transition-opacity duration-200 ${
-          sidebarOpen ? "opacity-100 delay-100" : "opacity-0"
+        <div className={`border-t border-gray-800 p-4 flex items-center text-xs text-gray-400 flex-shrink-0 transition-opacity whitespace-nowrap ${
+          sidebarOpen 
+            ? "opacity-100 duration-300 delay-200 ease-out" 
+            : "opacity-0 duration-150 delay-0 ease-in"
         }`}>
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-2 text-sm">
             👤
           </div>
-          <div>
-            <div className="text-gray-200">User profile</div>
-            <div className="text-[10px] text-gray-500">Signed in</div>
+          <div className="overflow-hidden">
+            <div className="text-gray-200 truncate">User profile</div>
+            <div className="text-[10px] text-gray-500 truncate">Signed in</div>
           </div>
         </div>
       </aside>
@@ -580,15 +710,19 @@ export const Home: React.FC = () => {
                                 {message.response.execution.row_count} rows •{" "}
                                 {message.response.execution.execution_time.toFixed(3)}s
                               </div>
-                              <div className="flex items-center space-x-1">
+                              <div className="flex items-center space-x-1 relative">
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
                                     const tableId = `table-${message.id}`;
-                                    const currentSearch = tableSearch[tableId] || "";
-                                    const newSearch = prompt("Search in table:", currentSearch);
-                                    if (newSearch !== null) {
-                                      setTableSearch({ ...tableSearch, [tableId]: newSearch });
-                                    }
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setSearchPopup({ 
+                                      tableId, 
+                                      isOpen: true,
+                                      position: {
+                                        top: rect.bottom + 8,
+                                        left: rect.right - 256 // 256px = w-64 (width của popup)
+                                      }
+                                    });
                                   }}
                                   className="glow-btn text-xs px-2 py-1 rounded-md"
                                   title="Search in table"
@@ -603,7 +737,13 @@ export const Home: React.FC = () => {
                                   🔎
                                 </button>
                                 <button
-                                  onClick={() => downloadCSV(message.response!.execution!)}
+                                  onClick={async () => {
+                                    try {
+                                      await downloadCSV(message.response!.execution!);
+                                    } catch (err) {
+                                      console.error("Failed to download CSV:", err);
+                                    }
+                                  }}
                                   className="glow-btn text-xs px-2 py-1 rounded-md"
                                   title="Download CSV"
                                 >
@@ -722,13 +862,18 @@ export const Home: React.FC = () => {
             {/* Header */}
             <div className="flex justify-between items-center p-4 border-b border-gray-800 flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-200">Query Results</h2>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 relative">
                 <button
-                  onClick={() => {
-                    const searchTerm = prompt("Search in table:", tableSearch["zoomed"] || "");
-                    if (searchTerm !== null) {
-                      setTableSearch({ ...tableSearch, "zoomed": searchTerm });
-                    }
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setSearchPopup({ 
+                      tableId: "zoomed", 
+                      isOpen: true,
+                      position: {
+                        top: rect.bottom + 8,
+                        left: rect.right - 256 // 256px = w-64 (width của popup)
+                      }
+                    });
                   }}
                   className="glow-btn text-xs px-3 py-1.5 rounded-md"
                   title="Search in table"
@@ -736,7 +881,13 @@ export const Home: React.FC = () => {
                   🔍 Search
                 </button>
                 <button
-                  onClick={() => downloadCSV(zoomedTable)}
+                  onClick={async () => {
+                    try {
+                      await downloadCSV(zoomedTable);
+                    } catch (err) {
+                      console.error("Failed to download CSV:", err);
+                    }
+                  }}
                   className="glow-btn text-xs px-3 py-1.5 rounded-md"
                   title="Download CSV"
                 >
@@ -759,6 +910,104 @@ export const Home: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Search Popup Modal */}
+      {searchPopup.isOpen && searchPopup.position && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setSearchPopup({ tableId: "", isOpen: false })}
+          />
+          {/* Popup */}
+          <div
+            className="fixed z-50 bg-[#0b1018] w-64 border border-gray-700 rounded-lg shadow-2xl select-none"
+            style={{
+              top: `${searchPopup.position.top}px`,
+              left: `${searchPopup.position.left}px`,
+              userSelect: 'none',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - Draggable area */}
+            <div 
+              className="flex justify-between items-center px-3 py-2 border-b border-gray-800 cursor-grab active:cursor-grabbing"
+              onMouseDown={(e) => {
+                // Don't start dragging if clicking on close button
+                if ((e.target as HTMLElement).closest('button')) return;
+                
+                const popupElement = e.currentTarget.parentElement as HTMLElement;
+                if (popupElement) {
+                  const popupRect = popupElement.getBoundingClientRect();
+                  setIsDragging(true);
+                  setDragOffset({
+                    x: e.clientX - popupRect.left,
+                    y: e.clientY - popupRect.top,
+                  });
+                  e.preventDefault();
+                }
+              }}
+            >
+              <h3 className="text-sm font-semibold text-gray-200 flex items-center space-x-1.5">
+                <span className="text-xs">🔍</span>
+                <span>Search</span>
+              </h3>
+              <button
+                onClick={() => setSearchPopup({ tableId: "", isOpen: false })}
+                className="text-gray-400 hover:text-gray-200 text-lg font-bold w-5 h-5 flex items-center justify-center rounded hover:bg-gray-800 transition-colors leading-none"
+                title="Close (ESC)"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Search Input */}
+            <div className="p-3">
+              <input
+                type="text"
+                autoFocus
+                value={searchPopup.tableId && tableSearch[searchPopup.tableId] !== undefined ? tableSearch[searchPopup.tableId] : ""}
+                onChange={(e) => {
+                  if (searchPopup.tableId) {
+                    const newValue = e.target.value;
+                    setTableSearch((prev) => ({
+                      ...prev,
+                      [searchPopup.tableId]: newValue
+                    }));
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "Escape") {
+                    setSearchPopup({ tableId: "", isOpen: false });
+                  }
+                }}
+                placeholder="Search in table..."
+                className="w-full bg-[#05070c] border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              />
+              <div className="mt-2 flex items-center justify-end">
+                <button
+                  onClick={() => {
+                    // Close popup immediately
+                    setSearchPopup({ tableId: "", isOpen: false });
+                    // Clear the search term
+                    if (searchPopup.tableId) {
+                      setTableSearch((prev) => {
+                        const newState = { ...prev };
+                        delete newState[searchPopup.tableId];
+                        return newState;
+                      });
+                    }
+                  }}
+                  className="text-[10px] text-gray-400 hover:text-gray-200 underline"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -775,18 +1024,18 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, badge }
   return (
     <button
       onClick={onClick}
-      className={`nav-item-animated w-full flex items-center justify-between px-5 py-3 text-[15px] font-medium transition-colors ${
+      className={`nav-item-animated w-full flex items-center justify-between px-5 py-3 text-[15px] font-medium transition-colors whitespace-nowrap ${
         active
           ? "bg-[#111827] text-sky-300 border-l-2 border-sky-500 nav-item-active"
           : "text-gray-200 hover:text-white hover:bg-[#121826]"
       }`}
     >
-      <div className="flex items-center space-x-3">
-        <span className="text-xl">{icon}</span>
-        <span>{label}</span>
+      <div className="flex items-center space-x-3 overflow-hidden flex-shrink-0">
+        <span className="text-xl flex-shrink-0">{icon}</span>
+        <span className="truncate">{label}</span>
       </div>
       {badge !== undefined && badge > 0 && (
-        <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-red-500 text-[11px] flex items-center justify-center text-white font-semibold">
+        <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-red-500 text-[11px] flex items-center justify-center text-white font-semibold flex-shrink-0">
           {badge}
         </span>
       )}
@@ -796,6 +1045,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, badge }
 
 type CellProps = {
   children: React.ReactNode;
+  highlight?: boolean;
 };
 
 const Th: React.FC<CellProps> = ({ children }) => (
@@ -804,8 +1054,10 @@ const Th: React.FC<CellProps> = ({ children }) => (
   </th>
 );
 
-const Td: React.FC<CellProps> = ({ children }) => (
-  <td className="px-4 py-2 text-[13px] text-gray-200 border-t border-gray-800/60">
+const Td: React.FC<CellProps> = ({ children, highlight }) => (
+  <td className={`px-4 py-2 text-[13px] text-gray-200 border-t border-gray-800/60 transition-colors duration-200 ${
+    highlight ? "bg-green-500/10" : ""
+  }`}>
     {children}
   </td>
 );

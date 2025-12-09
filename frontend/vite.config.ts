@@ -12,6 +12,12 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  // Build configuration
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
   }
 })
 

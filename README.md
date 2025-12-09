@@ -17,9 +17,9 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
-│  │Streamlit │───▶│ FastAPI  │───▶│  Redis   │───▶│  MySQL   │  │
+│  │  React   │───▶│ FastAPI  │───▶│  Redis   │───▶│  MySQL   │  │
 │  │ Frontend │    │ Backend  │    │  Cache   │    │ Database │  │
-│  │  :8501   │◀───│  :8000   │◀───│  :6379   │◀───│  :3307   │  │
+│  │  :3000   │◀───│  :8000   │◀───│  :6379   │◀───│  :3307   │  │
 │  └──────────┘    └──────────┘    └──────────┘    └──────────┘  │
 │                        │                                         │
 │         ┌──────────────┼──────────────┐                         │
@@ -112,7 +112,8 @@ Question: "How many users?"
 | **Database**        | MySQL 8.0 + SQLAlchemy         | Connection pooling, ORM        |
 | **Caching**         | Redis 7 + In-memory            | Multi-layer caching            |
 | **Embeddings**      | OpenAI / Sentence-Transformers | Semantic similarity            |
-| **Frontend**        | Streamlit + Plotly             | Interactive UI + Charts        |
+| **Frontend**        | React 18 + TypeScript + Vite   | Modern SPA with dark theme      |
+| **UI Framework**   | Tailwind CSS + Custom CSS      | Responsive design, animations  |
 | **Container**       | Docker Compose                 | Full stack deployment          |
 
 ---
@@ -161,33 +162,46 @@ OPENROUTER_API_KEY=sk-or-your-key-here  # https://openrouter.ai/keys
 
 ### 3️⃣ Chạy Full Stack với Docker
 
-```powershell
-# Setup tự động: MySQL + API + Sample Data
-.\setup_docker.ps1
+```bash
+# Quick start (Linux/macOS)
+./start.sh
 
-# ✅ Script sẽ:
-# - Kiểm tra Docker
-# - Validate API keys (auto fallback nếu cần)
-# - Start MySQL (port 3307), API (port 8000), phpMyAdmin (port 8080)
-# - Import schema + Generate 500 users, 1000 products, 2000 orders
-# - Test health check
+# Quick start (Windows)
+.\start.ps1
+
+# Hoặc manual
+docker-compose up -d --build
 ```
+
+**✅ Script sẽ:**
+- Kiểm tra Docker
+- Validate API keys (auto fallback nếu cần)
+- Start MySQL (port 3307), Redis (port 6379), API (port 8000), Frontend (port 3000)
+- Import schema + Generate sample data (500 users, 1000 products, 2000 orders)
+- Test health checks
 
 **Services Ready:**
 
+- 🎨 **React Frontend**: http://localhost:3000
 - 🔗 **API**: http://localhost:8000
 - 📖 **API Docs**: http://localhost:8000/docs
-- 🗄️ **phpMyAdmin**: http://localhost:8080
+- 🗄️ **phpMyAdmin**: http://localhost:8080 (optional, use `--profile tools`)
 - 💾 **MySQL**: localhost:3307 (root/admin)
+- 💾 **Redis**: localhost:6379
 
 ### 4️⃣ Test API
 
-**Option A: Use Streamlit UI** (Recommended)
+**Option A: Use React UI** (Recommended)
 
-```powershell
+Frontend React đã chạy tự động với Docker Compose tại **http://localhost:3000**
+
+**Hoặc chạy local development:**
+
+```bash
 cd frontend
-streamlit run streamlit_app.py
-# Open http://localhost:8501 và chat!
+npm install
+npm run dev
+# App sẽ chạy tại http://localhost:3000
 ```
 
 **Option B: Use cURL**
@@ -432,9 +446,10 @@ CORS_ORIGINS=*
 
 ## 🐳 Docker Commands
 
-```powershell
-# Setup tự động (recommended)
-.\setup_docker.ps1
+```bash
+# Quick start (recommended)
+./start.sh          # Linux/macOS
+.\start.ps1         # Windows
 
 # Hoặc manual commands:
 docker-compose -f docker-compose.full.yml up -d --build
@@ -635,8 +650,17 @@ NL2SQL/
 │       └── sql_query.py            # Core data models
 │
 ├── frontend/
-│   ├── streamlit_app.py            # Chat UI + Analytics Dashboard
-│   └── requirements.txt            # Frontend dependencies
+│   ├── src/
+│   │   ├── home.tsx                # Main chat UI component
+│   │   ├── components/
+│   │   │   └── Analytics.tsx       # Analytics dashboard
+│   │   ├── api/
+│   │   │   └── client.ts           # API client & types
+│   │   ├── main.tsx                # App entry point
+│   │   └── index.css               # Styles & animations
+│   ├── Dockerfile                  # Frontend container (Nginx)
+│   ├── package.json                # Node dependencies
+│   └── vite.config.ts              # Build configuration
 │
 ├── docs/
 │   ├── architecture.md             # 🏗️ Technical deep-dive
@@ -806,7 +830,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 📊 Monitoring & Analytics
 
-Access the **Analytics Dashboard** at http://localhost:8501 (navigate to 📊 Analytics)
+Access the **Analytics Dashboard** at http://localhost:3000 (click 📊 Analytics in sidebar)
 
 **Available Metrics:**
 

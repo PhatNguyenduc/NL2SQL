@@ -1,9 +1,25 @@
+# ==========================================
 # Python
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Python Build & Distribution
 build/
 develop-eggs/
 dist/
@@ -16,44 +32,25 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual Environment
-venv/
-env/
-ENV/
-.venv
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Environment variables
-.env
-
-# Testing
+# Python Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
+.nox/
+.hypothesis/
+pytestdebug.log
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Cache
-*.cache
-.cache/
-
-# Node.js / React Frontend
+# ==========================================
+# Node.js / JavaScript / TypeScript
+# ==========================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -69,56 +66,153 @@ build/
 out/
 .nuxt/
 .vite/
+*.tsbuildinfo
+.tsbuildinfo
 
 # Frontend specific
 frontend/node_modules/
 frontend/dist/
 frontend/build/
 frontend/.vite/
-frontend/.next/
 frontend/coverage/
 frontend/.nyc_output/
-
-# TypeScript
-*.tsbuildinfo
-.tsbuildinfo
 
 # Testing
 coverage/
 .nyc_output/
 .jest/
 
-# Editor directories and files
+# ESLint
+.eslintcache
+
+# ==========================================
+# Environment & Configuration
+# ==========================================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+*.env
+
+# ==========================================
+# IDEs & Editors
+# ==========================================
+# VSCode
 .vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 !.vscode/extensions.json
-.idea
+*.code-workspace
+
+# IntelliJ / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Other
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 
-# OS
+# ==========================================
+# Operating Systems
+# ==========================================
+# macOS
 .DS_Store
 .DS_Store?
 ._*
+.AppleDouble
+.LSOverride
 .Spotlight-V100
 .Trashes
-ehthumbs.db
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ==========================================
 # Docker
-*.log
+# ==========================================
 docker-compose.override.yml
+.dockerignore
 
+# ==========================================
 # Database
+# ==========================================
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
 
-# Temporary files
+# ==========================================
+# Logs
+# ==========================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# Temporary & Backup Files
+# ==========================================
 *.tmp
 *.temp
 *.bak
-*.swp
+*.backup
+*.old
 *~
+*.orig
+
+# ==========================================
+# Project Specific
+# ==========================================
+# Cursor IDE
+.cursor/
+
+# Local data files
+*.csv
+*.xlsx
+*.json.bak
+
+# Generated documentation
+docs/_build/
+site/
