@@ -22,6 +22,8 @@ class QueryType(Enum):
     RANKING = "ranking"         # TOP N, ORDER BY focused
     NESTED = "nested"           # Subqueries needed
     SCHEMA = "schema"           # Schema/metadata questions
+    GREETING = "greeting"       # Greetings and casual chat
+    NON_QUERY = "non_query"     # Not a database query
     UNKNOWN = "unknown"
 
 
@@ -130,6 +132,30 @@ VIETNAMESE_SYNONYMS = {
 
 # Query type detection patterns
 QUERY_TYPE_PATTERNS = {
+    QueryType.GREETING: [
+        # Exact greetings (strict match for short messages)
+        r'^\s*(hello|hi|hey|xin chào|chào|chào bạn|alo|yo)\s*[!?.,:]*\s*$',
+        r'^\s*(good\s*(morning|afternoon|evening)|chào buổi\s*(sáng|chiều|tối))\s*[!?.]*\s*$',
+        r'^\s*(thanks?|thank you|cảm ơn|cám ơn|cảm ơn bạn)\s*[!?.]*\s*$',
+        r'^\s*(bye|goodbye|tạm biệt|hẹn gặp lại|bye bye)\s*[!?.]*\s*$',
+        r'^\s*(ok|okay|oke|được|rồi|uh|uhm|hmm|à|ừ)\s*[!?.]*\s*$',
+        # Greetings with simple additions
+        r'^\s*(hello|hi|hey|chào)\s+(bạn|anh|chị|em|nhé|nha|ơi|à)\s*[!?.]*\s*$',
+        r'^\s*(chào|hello|hi)\s+(buổi\s+)?(sáng|chiều|tối)?\s*(bạn|nhé|nha)?\s*[!?.]*\s*$',
+        # Casual chat starters
+        r'^\s*(bạn ơi|hey bạn|ê|ê bạn)\s*[!?.]*\s*$',
+    ],
+    QueryType.NON_QUERY: [
+        r'^\s*(bạn là ai|who are you|what are you|you are)\s*[?]?\s*$',
+        r'^\s*(bạn có thể làm gì|what can you do|you can do)\s*[?]?\s*$',
+        r'^\s*(help|giúp tôi|hướng dẫn|giúp đỡ)\s*[!?.]*\s*$',
+        r'^\s*(bạn tên (là )?gì|what.*your name|tên bạn)\s*[?]?\s*$',
+        r'^\s*(how are you|bạn khỏe không|bạn thế nào)\s*[?]?\s*$',
+        r'^\s*(bạn là gì|bạn làm gì|bạn biết gì)\s*[?]?\s*$',
+        # Meta questions about the system
+        r'^\s*(this|this is|đây là gì)\s*[?]?\s*$',
+        r'^\s*(test|testing|thử|thử nghiệm)\s*[!?.]*\s*$',
+    ],
     QueryType.SCHEMA: [
         r'\b(schema|cấu trúc|structure)\b',
         r'\b(tables?|bảng)\b.*\b(list|liệt kê|có gì|nào|what)\b',
@@ -291,10 +317,38 @@ class QueryPreprocessor:
         Returns:
             Tuple of (QueryType, confidence)
         """
-        text_lower = text.lower()
+        text_lower = text.lower().strip()
+        
+        # PRIORITY CHECK: Greetings and non-query messages FIRST
+        # These should be detected before any data query patterns
+        priority_types = [QueryType.GREETING, QueryType.NON_QUERY]
+        for priority_type in priority_types:
+            if priority_type in QUERY_TYPE_PATTERNS:
+                for pattern in QUERY_TYPE_PATTERNS[priority_type]:
+                    if re.search(pattern, text_lower, re.IGNORECASE):
+                        logger.debug(f"Priority match: {priority_type.value} with pattern: {pattern}")
+                        return priority_type, 0.95  # High confidence for exact matches
+        
+        # Additional short message check - very short messages are likely greetings
+        if len(text_lower.split()) <= 2 and len(text_lower) <= 20:
+            # Check if it contains any data-related keywords
+            data_keywords = ['user', 'order', 'product', 'customer', 'count', 'sum', 'show', 
+                           'list', 'get', 'find', 'bao nhiêu', 'đếm', 'liệt kê', 'hiển thị',
+                           'tổng', 'trung bình', 'cao nhất', 'thấp nhất']
+            has_data_keyword = any(kw in text_lower for kw in data_keywords)
+            
+            if not has_data_keyword:
+                # Short message without data keywords - likely greeting/casual
+                logger.debug(f"Short non-data message detected: {text}")
+                return QueryType.GREETING, 0.7
+        
+        # Regular scoring for data queries
         scores = {qt: 0 for qt in QueryType}
         
         for query_type, patterns in QUERY_TYPE_PATTERNS.items():
+            # Skip already checked priority types
+            if query_type in priority_types:
+                continue
             for pattern in patterns:
                 if re.search(pattern, text_lower, re.IGNORECASE):
                     scores[query_type] += 1
@@ -307,7 +361,6 @@ class QueryPreprocessor:
             return QueryType.LOOKUP, 0.5  # Default to simple lookup
         
         # Calculate confidence based on score
-        total_patterns = sum(len(p) for p in QUERY_TYPE_PATTERNS.values())
         confidence = min(0.5 + (max_score * 0.2), 1.0)
         
         return max_type, confidence

@@ -289,6 +289,114 @@ ORDER BY tablename"""
             potential_issues=["Đây là metadata query, không phải data query"]
         )
     
+    def _generate_greeting_response(self, question: str) -> SQLQuery:
+        """
+        Generate a friendly response for greetings
+        
+        Args:
+            question: The greeting message
+            
+        Returns:
+            SQLQuery with greeting response (no actual SQL)
+        """
+        # Detect language
+        vietnamese_greetings = ['xin chào', 'chào', 'alo', 'buổi sáng', 'buổi chiều', 'buổi tối']
+        is_vietnamese = any(g in question.lower() for g in vietnamese_greetings)
+        
+        if is_vietnamese:
+            explanation = """Xin chào! 👋 
+
+Tôi là trợ lý NL2SQL, giúp bạn truy vấn database bằng ngôn ngữ tự nhiên.
+
+**Bạn có thể hỏi tôi những câu như:**
+- "Có bao nhiêu khách hàng?"
+- "Top 10 sản phẩm bán chạy nhất"
+- "Doanh thu tháng này là bao nhiêu?"
+- "Liệt kê các đơn hàng của khách hàng X"
+
+Hãy đặt câu hỏi về dữ liệu trong database! 📊"""
+        else:
+            explanation = """Hello! 👋 
+
+I'm NL2SQL assistant, helping you query the database using natural language.
+
+**You can ask me questions like:**
+- "How many customers do we have?"
+- "Top 10 best selling products"
+- "What's the revenue this month?"
+- "List orders from customer X"
+
+Ask me anything about your data! 📊"""
+        
+        return SQLQuery(
+            query="-- No SQL generated (greeting detected)",
+            explanation=explanation,
+            confidence=1.0,
+            tables_used=[],
+            potential_issues=["Đây là lời chào, không phải câu hỏi data"]
+        )
+    
+    def _generate_help_response(self, question: str) -> SQLQuery:
+        """
+        Generate a help response for non-query messages
+        
+        Args:
+            question: The non-query message
+            
+        Returns:
+            SQLQuery with help information (no actual SQL)
+        """
+        # Detect language
+        vietnamese_words = ['bạn', 'là', 'gì', 'giúp', 'tôi', 'khỏe']
+        is_vietnamese = any(w in question.lower() for w in vietnamese_words)
+        
+        if is_vietnamese:
+            explanation = """Tôi là **NL2SQL Assistant** 🤖
+
+**Tôi có thể giúp bạn:**
+- Chuyển đổi câu hỏi tiếng Việt/Anh thành SQL
+- Truy vấn dữ liệu từ database
+- Thống kê, tổng hợp, phân tích dữ liệu
+
+**Database hiện tại:** E-commerce với 24 bảng
+- Khách hàng, Sản phẩm, Đơn hàng
+- Danh mục, Thương hiệu, Kho hàng
+- Đánh giá, Thanh toán, Vận chuyển
+
+**Ví dụ câu hỏi:**
+- "Có bao nhiêu sản phẩm trong kho?"
+- "Đơn hàng nào có giá trị cao nhất?"
+- "Khách hàng nào mua nhiều nhất tháng này?"
+
+Hãy thử đặt câu hỏi về dữ liệu! 💡"""
+        else:
+            explanation = """I'm **NL2SQL Assistant** 🤖
+
+**I can help you:**
+- Convert English/Vietnamese questions to SQL
+- Query data from the database
+- Generate statistics, aggregations, and analysis
+
+**Current database:** E-commerce with 24 tables
+- Customers, Products, Orders
+- Categories, Brands, Inventory
+- Reviews, Payments, Shipments
+
+**Example questions:**
+- "How many products are in stock?"
+- "Which order has the highest value?"
+- "Who are the top customers this month?"
+
+Try asking a data question! 💡"""
+        
+        return SQLQuery(
+            query="-- No SQL generated (help request detected)",
+            explanation=explanation,
+            confidence=1.0,
+            tables_used=[],
+            potential_issues=["Đây là yêu cầu trợ giúp, không phải câu hỏi data"]
+        )
+    
     def generate_sql(
         self,
         question: str,
@@ -367,6 +475,15 @@ ORDER BY tablename"""
             processed = self.query_preprocessor.process(question)
             query_type = processed.query_type
             logger.info(f"Query type: {processed.query_type.value}, confidence: {processed.confidence:.2f}")
+            
+            # Handle greetings and non-query messages
+            if query_type == QueryType.GREETING:
+                logger.info(f"Detected greeting: {question}")
+                return self._generate_greeting_response(question)
+            
+            if query_type == QueryType.NON_QUERY:
+                logger.info(f"Detected non-query: {question}")
+                return self._generate_help_response(question)
             
             # Use normalized question for better understanding
             effective_question = processed.normalized
