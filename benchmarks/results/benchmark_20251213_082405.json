@@ -1,0 +1,953 @@
+{
+  "timestamp": "2025-12-13T08:24:05.773535",
+  "total_tests": 49,
+  "passed_tests": 36,
+  "failed_tests": 13,
+  "overall_accuracy": 73.47,
+  "valid_sql_rate": 95.92,
+  "avg_latency_ms": 1152.94,
+  "p50_latency_ms": 12.53,
+  "p95_latency_ms": 3916.17,
+  "p99_latency_ms": 5010.88,
+  "cache_hit_rate": 42.86,
+  "avg_confidence": 0.9,
+  "categories": {
+    "simple_lookup": {
+      "category": "simple_lookup",
+      "total_tests": 5,
+      "passed_tests": 4,
+      "failed_tests": 1,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 792.41,
+      "avg_confidence": 0.86,
+      "cache_hit_rate": 60.0
+    },
+    "aggregation": {
+      "category": "aggregation",
+      "total_tests": 6,
+      "passed_tests": 6,
+      "failed_tests": 0,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 805.13,
+      "avg_confidence": 0.9,
+      "cache_hit_rate": 50.0
+    },
+    "join": {
+      "category": "join",
+      "total_tests": 5,
+      "passed_tests": 5,
+      "failed_tests": 0,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 1974.58,
+      "avg_confidence": 0.9,
+      "cache_hit_rate": 40.0
+    },
+    "complex_filter": {
+      "category": "complex_filter",
+      "total_tests": 5,
+      "passed_tests": 5,
+      "failed_tests": 0,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 682.79,
+      "avg_confidence": 0.88,
+      "cache_hit_rate": 60.0
+    },
+    "ranking": {
+      "category": "ranking",
+      "total_tests": 5,
+      "passed_tests": 4,
+      "failed_tests": 1,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 1359.89,
+      "avg_confidence": 0.9,
+      "cache_hit_rate": 40.0
+    },
+    "time_range": {
+      "category": "time_range",
+      "total_tests": 5,
+      "passed_tests": 4,
+      "failed_tests": 1,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 762.53,
+      "avg_confidence": 0.86,
+      "cache_hit_rate": 60.0
+    },
+    "vietnamese": {
+      "category": "vietnamese",
+      "total_tests": 7,
+      "passed_tests": 7,
+      "failed_tests": 0,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 100.0,
+      "avg_latency_ms": 1659.92,
+      "avg_confidence": 0.91,
+      "cache_hit_rate": 42.86
+    },
+    "edge_case": {
+      "category": "edge_case",
+      "total_tests": 5,
+      "passed_tests": 0,
+      "failed_tests": 5,
+      "valid_sql_rate": 60.0,
+      "execution_accuracy": 60.0,
+      "avg_latency_ms": 2082.98,
+      "avg_confidence": 0.87,
+      "cache_hit_rate": 40.0
+    },
+    "non_query": {
+      "category": "non_query",
+      "total_tests": 6,
+      "passed_tests": 1,
+      "failed_tests": 5,
+      "valid_sql_rate": 100.0,
+      "execution_accuracy": 16.67,
+      "avg_latency_ms": 294.69,
+      "avg_confidence": 0.97,
+      "cache_hit_rate": 0.0
+    }
+  },
+  "detailed_results": [
+    {
+      "test_id": "SL001",
+      "category": "simple_lookup",
+      "question": "Show all users",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM users\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 11.093854904174805,
+      "confidence": 0.8,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "SL002",
+      "category": "simple_lookup",
+      "question": "List all products",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM products\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1993.3669567108154,
+      "confidence": 0.9,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "SL003",
+      "category": "simple_lookup",
+      "question": "Show me all categories",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM categories\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 6.726980209350586,
+      "confidence": 0.8,
+      "tables_used": [
+        "categories"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "SL004",
+      "category": "simple_lookup",
+      "question": "Get all brands",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM brands\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1940.7258033752441,
+      "confidence": 1.0,
+      "tables_used": [
+        "brands"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "SL005",
+      "category": "simple_lookup",
+      "question": "Show orders with status pending",
+      "success": false,
+      "sql_generated": "SELECT o.order_id,\n       o.order_number,\n       o.order_status,\n       o.total_amount,\n       o.created_at\nFROM orders o\nWHERE o.order_status = 'pending'\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 10.154008865356445,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": "Expected column: status",
+      "validation_passed": false,
+      "from_cache": true
+    },
+    {
+      "test_id": "AG001",
+      "category": "aggregation",
+      "question": "How many users do we have?",
+      "success": true,
+      "sql_generated": "SELECT COUNT(*) AS total_users\nFROM users",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1231.2705516815186,
+      "confidence": 1.0,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "AG002",
+      "category": "aggregation",
+      "question": "What is the total number of products?",
+      "success": true,
+      "sql_generated": "SELECT COUNT(*) AS total_products\nFROM products",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 7.148504257202148,
+      "confidence": 0.8,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "AG003",
+      "category": "aggregation",
+      "question": "What is the average product price?",
+      "success": true,
+      "sql_generated": "SELECT AVG(base_price) AS average_product_price\nFROM products",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1501.1374950408936,
+      "confidence": 1.0,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "AG004",
+      "category": "aggregation",
+      "question": "What is the total revenue from all orders?",
+      "success": true,
+      "sql_generated": "SELECT SUM(total_amount) AS total_revenue\nFROM orders",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 6.529331207275391,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "AG005",
+      "category": "aggregation",
+      "question": "Count orders by status",
+      "success": true,
+      "sql_generated": "SELECT order_status,\n       COUNT(order_id) AS order_count\nFROM orders\nGROUP BY order_status",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 2077.5718688964844,
+      "confidence": 1.0,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "AG006",
+      "category": "aggregation",
+      "question": "What is the minimum and maximum product price?",
+      "success": true,
+      "sql_generated": "SELECT MIN(base_price) AS minimum_price,\n       MAX(base_price) AS maximum_price\nFROM products",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 7.114648818969727,
+      "confidence": 0.8,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "JN001",
+      "category": "join",
+      "question": "Show orders with customer names",
+      "success": true,
+      "sql_generated": "SELECT o.order_id,\n       u.first_name,\n       u.last_name\nFROM orders o\nINNER JOIN users u ON o.user_id = u.user_id\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 2379.034996032715,
+      "confidence": 1.0,
+      "tables_used": [
+        "orders",
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "JN002",
+      "category": "join",
+      "question": "List products with their category names",
+      "success": true,
+      "sql_generated": "SELECT p.product_id,\n       p.product_name,\n       c.category_name\nFROM products p\nINNER JOIN product_categories pc ON p.product_id = pc.product_id\nINNER JOIN categories c ON pc.category_id = c.category_id\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 7.95745849609375,
+      "confidence": 0.8,
+      "tables_used": [
+        "products",
+        "product_categories",
+        "categories"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "JN003",
+      "category": "join",
+      "question": "Show order items with product details",
+      "success": true,
+      "sql_generated": "SELECT oi.order_item_id,\n       oi.product_id,\n       oi.variant_id,\n       oi.product_name,\n       oi.variant_name,\n       oi.sku,\n       oi.quantity,\n       oi.unit_price,\n       oi.total_price,\n       p.product_name AS product_details,\n       pv.variant_name AS variant_details\nFROM order_items oi\nINNER JOIN products p ON oi.product_id = p.product_id\nINNER JOIN product_variants pv ON oi.variant_id = pv.variant_id\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 4136.574745178223,
+      "confidence": 1.0,
+      "tables_used": [
+        "order_items",
+        "products",
+        "product_variants"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "JN004",
+      "category": "join",
+      "question": "List products with brand names",
+      "success": true,
+      "sql_generated": "SELECT p.product_id,\n       p.product_name,\n       b.brand_name\nFROM products p\nINNER JOIN brands b ON p.brand_id = b.brand_id\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 7.630348205566406,
+      "confidence": 0.8,
+      "tables_used": [
+        "products",
+        "brands"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "JN005",
+      "category": "join",
+      "question": "Show users with their order count",
+      "success": true,
+      "sql_generated": "SELECT u.user_id,\n       u.first_name,\n       u.last_name,\n       COUNT(o.order_id) AS order_count\nFROM users u\nLEFT JOIN orders o ON u.user_id = o.user_id\nGROUP BY u.user_id,\n         u.first_name,\n         u.last_name\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 3341.7112827301025,
+      "confidence": 0.9,
+      "tables_used": [
+        "users",
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "CF001",
+      "category": "complex_filter",
+      "question": "Show products with price between 100 and 500",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM products\nWHERE base_price BETWEEN 100 AND 500\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 10.057449340820312,
+      "confidence": 0.8,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "CF002",
+      "category": "complex_filter",
+      "question": "Find users whose email contains gmail",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM users\nWHERE email LIKE '%gmail%'\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1485.325574874878,
+      "confidence": 1.0,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "CF003",
+      "category": "complex_filter",
+      "question": "Show orders with total amount greater than 1000",
+      "success": true,
+      "sql_generated": "SELECT o.order_id,\n       o.total_amount\nFROM orders o\nWHERE o.total_amount > 1000\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 7.894039154052734,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "CF004",
+      "category": "complex_filter",
+      "question": "Find products that are out of stock",
+      "success": true,
+      "sql_generated": "SELECT p.product_id,\n       p.product_name,\n       i.quantity_available\nFROM products p\nINNER JOIN inventory i ON p.product_id = i.product_id\nWHERE i.quantity_available = 0\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1899.111270904541,
+      "confidence": 1.0,
+      "tables_used": [
+        "products",
+        "inventory"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "CF005",
+      "category": "complex_filter",
+      "question": "Show active users who have placed orders",
+      "success": true,
+      "sql_generated": "SELECT DISTINCT u.user_id,\n                u.first_name,\n                u.last_name,\n                u.email\nFROM users u\nINNER JOIN orders o ON u.user_id = o.user_id\nWHERE u.is_active = 1\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 11.54780387878418,
+      "confidence": 0.8,
+      "tables_used": [
+        "users",
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "RK001",
+      "category": "ranking",
+      "question": "Top 5 most expensive products",
+      "success": true,
+      "sql_generated": "SELECT p.product_id,\n       p.product_name,\n       p.base_price\nFROM products p\nORDER BY p.base_price DESC\nLIMIT 5",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1480.0705909729004,
+      "confidence": 1.0,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "RK002",
+      "category": "ranking",
+      "question": "Top 10 customers by total spending",
+      "success": true,
+      "sql_generated": "SELECT u.user_id,\n       u.first_name,\n       u.last_name,\n       SUM(o.total_amount) AS total_spending\nFROM users u\nINNER JOIN orders o ON u.user_id = o.user_id\nGROUP BY u.user_id\nORDER BY total_spending DESC\nLIMIT 10",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 10.0555419921875,
+      "confidence": 0.8,
+      "tables_used": [
+        "users",
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "RK003",
+      "category": "ranking",
+      "question": "5 newest orders",
+      "success": true,
+      "sql_generated": "SELECT o.order_id,\n       o.order_number,\n       o.total_amount,\n       o.created_at\nFROM orders o\nORDER BY o.created_at DESC\nLIMIT 5",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 2276.113748550415,
+      "confidence": 1.0,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "RK004",
+      "category": "ranking",
+      "question": "Top 3 best selling products",
+      "success": true,
+      "sql_generated": "SELECT oi.product_id,\n       p.product_name,\n       SUM(oi.quantity) AS total_sold\nFROM order_items oi\nJOIN products p ON oi.product_id = p.product_id\nGROUP BY oi.product_id,\n         p.product_name\nORDER BY total_sold DESC\nLIMIT 3",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 19.644737243652344,
+      "confidence": 0.8,
+      "tables_used": [
+        "order_items",
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "RK005",
+      "category": "ranking",
+      "question": "Least popular categories by product count",
+      "success": false,
+      "sql_generated": "SELECT c.category_id,\n       c.category_name,\n       COUNT(pc.product_id) AS product_count\nFROM categories c\nLEFT JOIN product_categories pc ON c.category_id = pc.category_id\nGROUP BY c.category_id,\n         c.category_name\nORDER BY product_count ASC;",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 3013.566493988037,
+      "confidence": 0.9,
+      "tables_used": [
+        "categories",
+        "product_categories"
+      ],
+      "error_message": "Expected LIMIT in query",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "TR001",
+      "category": "time_range",
+      "question": "Orders from last month",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM orders\nWHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)\n  AND created_at < CURDATE()\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 12.529134750366211,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "TR002",
+      "category": "time_range",
+      "question": "Users registered this year",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM users\nWHERE YEAR(created_at) = YEAR(CURDATE())\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1573.1010437011719,
+      "confidence": 1.0,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "TR003",
+      "category": "time_range",
+      "question": "Revenue for the last 7 days",
+      "success": true,
+      "sql_generated": "SELECT SUM(amount) AS total_revenue\nFROM transactions\nWHERE processed_at >= NOW() - INTERVAL 7 DAY",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 6.752252578735352,
+      "confidence": 0.8,
+      "tables_used": [
+        "transactions"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "TR004",
+      "category": "time_range",
+      "question": "Orders between January and March 2024",
+      "success": false,
+      "sql_generated": "SELECT *\nFROM orders\nWHERE created_at BETWEEN '2024-01-01' AND '2024-03-31'\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 2212.4898433685303,
+      "confidence": 0.9,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": "Expected date filter in query",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "TR005",
+      "category": "time_range",
+      "question": "Monthly order count for this year",
+      "success": true,
+      "sql_generated": "SELECT MONTH(created_at) AS MONTH,\n       COUNT(*) AS order_count\nFROM orders\nWHERE YEAR(created_at) = YEAR(CURDATE())\nGROUP BY MONTH(created_at)\nORDER BY MONTH;",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 7.755279541015625,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "VN001",
+      "category": "vietnamese",
+      "question": "Có bao nhiêu người dùng?",
+      "success": true,
+      "sql_generated": "SELECT COUNT(*) AS user_count\nFROM users",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1180.2504062652588,
+      "confidence": 1.0,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "VN002",
+      "category": "vietnamese",
+      "question": "Hiển thị 5 sản phẩm đắt nhất",
+      "success": true,
+      "sql_generated": "SELECT p.product_id,\n       p.product_name,\n       p.base_price\nFROM products p\nORDER BY p.base_price DESC\nLIMIT 5",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 6.371498107910156,
+      "confidence": 0.8,
+      "tables_used": [
+        "products"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "VN003",
+      "category": "vietnamese",
+      "question": "Tổng doanh thu tháng này",
+      "success": true,
+      "sql_generated": "SELECT SUM(o.total_amount) AS total_revenue\nFROM orders o\nWHERE MONTH(o.created_at) = MONTH(CURRENT_DATE())\n  AND YEAR(o.created_at) = YEAR(CURRENT_DATE())",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1986.8450164794922,
+      "confidence": 1.0,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "VN004",
+      "category": "vietnamese",
+      "question": "Danh sách khách hàng mới trong tuần này",
+      "success": true,
+      "sql_generated": "SELECT u.user_id,\n       u.first_name,\n       u.last_name,\n       u.email,\n       u.created_at\nFROM users u\nWHERE u.created_at >= CURDATE() - INTERVAL WEEKDAY(CURDATE()) DAY\n  AND u.created_at < CURDATE() + INTERVAL 1 DAY\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 8.112668991088867,
+      "confidence": 0.8,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "VN005",
+      "category": "vietnamese",
+      "question": "Top 10 khách hàng chi tiêu nhiều nhất",
+      "success": true,
+      "sql_generated": "SELECT u.user_id,\n       u.first_name,\n       u.last_name,\n       SUM(o.total_amount) AS total_spent\nFROM users u\nINNER JOIN orders o ON u.user_id = o.user_id\nGROUP BY u.user_id,\n         u.first_name,\n         u.last_name\nORDER BY total_spent DESC\nLIMIT 10",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 3415.5948162078857,
+      "confidence": 1.0,
+      "tables_used": [
+        "users",
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "VN006",
+      "category": "vietnamese",
+      "question": "Đơn hàng nào có giá trị lớn nhất?",
+      "success": true,
+      "sql_generated": "SELECT o.order_id,\n       o.total_amount\nFROM orders o\nORDER BY o.total_amount DESC\nLIMIT 1",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 11.358261108398438,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": true
+    },
+    {
+      "test_id": "VN007",
+      "category": "vietnamese",
+      "question": "Số lượng sản phẩm theo danh mục",
+      "success": true,
+      "sql_generated": "SELECT c.category_id,\n       COUNT(p.product_id) AS product_count\nFROM product_categories pc\nINNER JOIN products p ON pc.product_id = p.product_id\nINNER JOIN categories c ON pc.category_id = c.category_id\nGROUP BY c.category_id",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 5010.876655578613,
+      "confidence": 1.0,
+      "tables_used": [
+        "product_categories",
+        "products",
+        "categories"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    },
+    {
+      "test_id": "EC001",
+      "category": "edge_case",
+      "question": "Show me everything",
+      "success": false,
+      "sql_generated": "SELECT *\nFROM orders\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 8.68678092956543,
+      "confidence": 0.8,
+      "tables_used": [
+        "orders"
+      ],
+      "error_message": "Confidence too high: 0.8",
+      "validation_passed": false,
+      "from_cache": true
+    },
+    {
+      "test_id": "EC002",
+      "category": "edge_case",
+      "question": "users orders products",
+      "success": false,
+      "sql_generated": "SELECT u.user_id,\n       u.first_name,\n       u.last_name,\n       o.order_id,\n       o.order_number,\n       o.total_amount,\n       p.product_id,\n       p.product_name\nFROM users u\nINNER JOIN orders o ON u.user_id = o.user_id\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN products p ON oi.product_id = p.product_id\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 3916.1698818206787,
+      "confidence": 1.0,
+      "tables_used": [
+        "users",
+        "orders",
+        "order_items",
+        "products"
+      ],
+      "error_message": "Confidence too high: 1.0",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "EC003",
+      "category": "edge_case",
+      "question": "What is 2 + 2?",
+      "success": false,
+      "sql_generated": "SELECT 2 + 2 AS RESULT\nLIMIT 100",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 6.408452987670898,
+      "confidence": 0.8,
+      "tables_used": [],
+      "error_message": "Generated SQL for non-query",
+      "validation_passed": false,
+      "from_cache": true
+    },
+    {
+      "test_id": "EC004",
+      "category": "edge_case",
+      "question": "Delete all users",
+      "success": false,
+      "sql_generated": null,
+      "sql_valid": false,
+      "execution_success": false,
+      "latency_ms": 2999.819278717041,
+      "confidence": 0.0,
+      "tables_used": [],
+      "error_message": "HTTP 500",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "EC005",
+      "category": "edge_case",
+      "question": "DROP TABLE users",
+      "success": false,
+      "sql_generated": null,
+      "sql_valid": false,
+      "execution_success": false,
+      "latency_ms": 3483.823299407959,
+      "confidence": 0.0,
+      "tables_used": [],
+      "error_message": "HTTP 500",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "NQ001",
+      "category": "non_query",
+      "question": "Hello",
+      "success": false,
+      "sql_generated": "-- No SQL generated (greeting detected)",
+      "sql_valid": true,
+      "execution_success": false,
+      "latency_ms": 3.5552978515625,
+      "confidence": 1.0,
+      "tables_used": [],
+      "error_message": "Generated SQL for greeting (should not)",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "NQ002",
+      "category": "non_query",
+      "question": "Xin chào",
+      "success": false,
+      "sql_generated": "-- No SQL generated (greeting detected)",
+      "sql_valid": true,
+      "execution_success": false,
+      "latency_ms": 3.0412673950195312,
+      "confidence": 1.0,
+      "tables_used": [],
+      "error_message": "Generated SQL for greeting (should not)",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "NQ003",
+      "category": "non_query",
+      "question": "Thank you",
+      "success": false,
+      "sql_generated": "-- No SQL generated (greeting detected)",
+      "sql_valid": true,
+      "execution_success": false,
+      "latency_ms": 3.583669662475586,
+      "confidence": 1.0,
+      "tables_used": [],
+      "error_message": "Generated SQL for greeting (should not)",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "NQ004",
+      "category": "non_query",
+      "question": "Cảm ơn bạn",
+      "success": false,
+      "sql_generated": "-- No SQL generated (greeting detected)",
+      "sql_valid": true,
+      "execution_success": false,
+      "latency_ms": 3.656148910522461,
+      "confidence": 1.0,
+      "tables_used": [],
+      "error_message": "Generated SQL for greeting (should not)",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "NQ005",
+      "category": "non_query",
+      "question": "How are you?",
+      "success": false,
+      "sql_generated": "-- No SQL generated (help request detected)",
+      "sql_valid": true,
+      "execution_success": false,
+      "latency_ms": 3.3957958221435547,
+      "confidence": 1.0,
+      "tables_used": [],
+      "error_message": "Generated SQL for greeting (should not)",
+      "validation_passed": false,
+      "from_cache": false
+    },
+    {
+      "test_id": "NQ006",
+      "category": "non_query",
+      "question": "Bạn có thể giúp tôi không?",
+      "success": true,
+      "sql_generated": "SELECT *\nFROM users\nLIMIT 10",
+      "sql_valid": true,
+      "execution_success": true,
+      "latency_ms": 1750.913143157959,
+      "confidence": 0.8,
+      "tables_used": [
+        "users"
+      ],
+      "error_message": null,
+      "validation_passed": true,
+      "from_cache": false
+    }
+  ],
+  "performance_metrics": {}
+}

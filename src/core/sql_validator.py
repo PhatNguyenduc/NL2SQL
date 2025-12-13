@@ -396,23 +396,36 @@ class SQLPostProcessor:
         return processed
     
     def _ensure_limit(self, sql: str) -> str:
-        """Add LIMIT clause if missing for non-aggregate queries"""
+        """Add LIMIT clause if missing for appropriate queries"""
         sql_upper = sql.upper()
         
         # Skip if already has LIMIT
         if 'LIMIT' in sql_upper:
             return sql
         
-        # Skip for aggregate queries
-        aggregates = ['COUNT(', 'SUM(', 'AVG(', 'MAX(', 'MIN(', 'GROUP BY']
-        if any(agg in sql_upper for agg in aggregates):
-            return sql
-        
         # Skip for non-SELECT queries
         if not sql_upper.strip().startswith('SELECT'):
             return sql
         
-        # Add LIMIT
+        # For queries with ORDER BY, always add LIMIT (ranking queries)
+        has_order_by = 'ORDER BY' in sql_upper
+        
+        # For pure aggregate queries without ORDER BY, skip LIMIT
+        # (e.g., "SELECT COUNT(*) FROM users" - single value result)
+        single_value_aggregates = ['COUNT(*)', 'SUM(', 'AVG(', 'MAX(', 'MIN(']
+        is_single_value_aggregate = (
+            any(agg in sql_upper for agg in single_value_aggregates) 
+            and 'GROUP BY' not in sql_upper
+            and not has_order_by
+        )
+        
+        if is_single_value_aggregate:
+            return sql
+        
+        # Add LIMIT for:
+        # 1. SELECT * queries (potentially large result sets)
+        # 2. ORDER BY queries (ranking - need to limit results)
+        # 3. GROUP BY queries without specific aggregation intent
         sql = sql.rstrip(';').strip()
         sql = f"{sql} LIMIT {self.default_limit}"
         

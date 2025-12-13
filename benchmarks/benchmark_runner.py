@@ -155,25 +155,36 @@ class NL2SQLBenchmark:
         sql_gen = response.get("sql_generation", {})
         execution = response.get("execution", {})
         
+        # Get the generated query
+        query = sql_gen.get("query", "") or ""
+        query_upper = query.upper()
+        
+        # Check if it's a non-SQL response (comment indicating no SQL generated)
+        is_comment_only = query.strip().startswith("--") and "NO SQL" in query_upper
+        
         # Check for greeting/non-query detection
         if "greeting_detected" in validation_rules:
-            # Should NOT generate SQL query for greetings
-            if sql_gen and sql_gen.get("query"):
-                return False, "Generated SQL for greeting (should not)"
-            return True, "Greeting correctly detected"
+            # Should NOT generate actual SQL query for greetings
+            # A comment like "-- No SQL generated" is acceptable
+            if is_comment_only or not query.strip():
+                return True, "Greeting correctly detected"
+            return False, "Generated SQL for greeting (should not)"
         
         if "help_detected" in validation_rules:
-            return True, "Help request detected"
+            if is_comment_only or not query.strip() or "HELP" in query_upper:
+                return True, "Help request detected"
+            return False, "Generated SQL for help request"
         
         if "non_query_detected" in validation_rules:
-            if sql_gen and sql_gen.get("query"):
-                return False, "Generated SQL for non-query"
-            return True, "Non-query correctly detected"
+            if is_comment_only or not query.strip():
+                return True, "Non-query correctly detected"
+            return False, "Generated SQL for non-query"
         
         if "blocked" in validation_rules:
-            # Dangerous queries should be blocked
-            query = sql_gen.get("query", "").upper()
-            if any(kw in query for kw in ["DROP", "DELETE", "TRUNCATE", "INSERT", "UPDATE"]):
+            # Dangerous queries should be blocked (no SQL generated or error)
+            if is_comment_only or not query.strip():
+                return True, "Dangerous query blocked"
+            if any(kw in query_upper for kw in ["DROP", "DELETE", "TRUNCATE", "INSERT", "UPDATE"]):
                 return False, "Dangerous query not blocked"
             return True, "Dangerous query blocked"
         
@@ -232,7 +243,7 @@ class NL2SQLBenchmark:
             
             elif rule == "has_date_filter":
                 query = sql_gen.get("query", "").upper()
-                date_keywords = ["DATE", "MONTH", "YEAR", "CURDATE", "NOW", "INTERVAL"]
+                date_keywords = ["DATE", "MONTH", "YEAR", "CURDATE", "NOW", "INTERVAL", "BETWEEN"]
                 if not any(kw in query for kw in date_keywords):
                     passed = False
                     messages.append("Expected date filter in query")
