@@ -1,0 +1,499 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "database": "ecommerce",
+    "created": "2024-12-13",
+    "description": "NL2SQL Benchmark Test Cases for MySQL ecommerce database"
+  },
+
+  "categories": {
+    "simple_lookup": {
+      "description": "Simple SELECT queries without aggregation",
+      "weight": 1.0
+    },
+    "aggregation": {
+      "description": "Queries with COUNT, SUM, AVG, etc.",
+      "weight": 1.2
+    },
+    "join": {
+      "description": "Queries requiring table JOINs",
+      "weight": 1.5
+    },
+    "complex_filter": {
+      "description": "Queries with complex WHERE conditions",
+      "weight": 1.3
+    },
+    "ranking": {
+      "description": "Queries with ORDER BY and LIMIT",
+      "weight": 1.2
+    },
+    "time_range": {
+      "description": "Queries with date/time filters",
+      "weight": 1.3
+    },
+    "vietnamese": {
+      "description": "Queries in Vietnamese language",
+      "weight": 1.5
+    },
+    "edge_case": {
+      "description": "Edge cases and tricky queries",
+      "weight": 2.0
+    },
+    "non_query": {
+      "description": "Greetings and non-SQL requests",
+      "weight": 1.0
+    }
+  },
+
+  "test_cases": [
+    {
+      "id": "SL001",
+      "category": "simple_lookup",
+      "question": "Show all users",
+      "expected_tables": ["users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM users LIMIT 100",
+      "validation": "row_count > 0"
+    },
+    {
+      "id": "SL002",
+      "category": "simple_lookup",
+      "question": "List all products",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM products LIMIT 100",
+      "validation": "row_count > 0"
+    },
+    {
+      "id": "SL003",
+      "category": "simple_lookup",
+      "question": "Show me all categories",
+      "expected_tables": ["categories"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM categories",
+      "validation": "row_count > 0"
+    },
+    {
+      "id": "SL004",
+      "category": "simple_lookup",
+      "question": "Get all brands",
+      "expected_tables": ["brands"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM brands",
+      "validation": "row_count > 0"
+    },
+    {
+      "id": "SL005",
+      "category": "simple_lookup",
+      "question": "Show orders with status pending",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM orders WHERE status = 'pending'",
+      "validation": "columns_include:status"
+    },
+
+    {
+      "id": "AG001",
+      "category": "aggregation",
+      "question": "How many users do we have?",
+      "expected_tables": ["users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT COUNT(*) FROM users",
+      "validation": "single_value"
+    },
+    {
+      "id": "AG002",
+      "category": "aggregation",
+      "question": "What is the total number of products?",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT COUNT(*) FROM products",
+      "validation": "single_value"
+    },
+    {
+      "id": "AG003",
+      "category": "aggregation",
+      "question": "What is the average product price?",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT AVG(price) FROM products",
+      "validation": "single_value"
+    },
+    {
+      "id": "AG004",
+      "category": "aggregation",
+      "question": "What is the total revenue from all orders?",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT SUM(total_amount) FROM orders",
+      "validation": "single_value"
+    },
+    {
+      "id": "AG005",
+      "category": "aggregation",
+      "question": "Count orders by status",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT status, COUNT(*) FROM orders GROUP BY status",
+      "validation": "has_group_by"
+    },
+    {
+      "id": "AG006",
+      "category": "aggregation",
+      "question": "What is the minimum and maximum product price?",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT MIN(price), MAX(price) FROM products",
+      "validation": "columns_count:2"
+    },
+
+    {
+      "id": "JN001",
+      "category": "join",
+      "question": "Show orders with customer names",
+      "expected_tables": ["orders", "users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT o.*, u.first_name, u.last_name FROM orders o JOIN users u ON o.user_id = u.user_id",
+      "validation": "has_join"
+    },
+    {
+      "id": "JN002",
+      "category": "join",
+      "question": "List products with their category names",
+      "expected_tables": ["products", "categories"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT p.*, c.name FROM products p JOIN categories c ON p.category_id = c.category_id",
+      "validation": "has_join"
+    },
+    {
+      "id": "JN003",
+      "category": "join",
+      "question": "Show order items with product details",
+      "expected_tables": ["order_items", "products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT oi.*, p.name, p.price FROM order_items oi JOIN products p ON oi.product_id = p.product_id",
+      "validation": "has_join"
+    },
+    {
+      "id": "JN004",
+      "category": "join",
+      "question": "List products with brand names",
+      "expected_tables": ["products", "brands"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT p.*, b.name FROM products p JOIN brands b ON p.brand_id = b.brand_id",
+      "validation": "has_join"
+    },
+    {
+      "id": "JN005",
+      "category": "join",
+      "question": "Show users with their order count",
+      "expected_tables": ["users", "orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT u.user_id, u.first_name, u.last_name, COUNT(o.order_id) FROM users u LEFT JOIN orders o ON u.user_id = o.user_id GROUP BY u.user_id",
+      "validation": "has_join,has_group_by"
+    },
+
+    {
+      "id": "CF001",
+      "category": "complex_filter",
+      "question": "Show products with price between 100 and 500",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM products WHERE price BETWEEN 100 AND 500",
+      "validation": "has_where"
+    },
+    {
+      "id": "CF002",
+      "category": "complex_filter",
+      "question": "Find users whose email contains gmail",
+      "expected_tables": ["users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM users WHERE email LIKE '%gmail%'",
+      "validation": "has_where"
+    },
+    {
+      "id": "CF003",
+      "category": "complex_filter",
+      "question": "Show orders with total amount greater than 1000",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM orders WHERE total_amount > 1000",
+      "validation": "has_where"
+    },
+    {
+      "id": "CF004",
+      "category": "complex_filter",
+      "question": "Find products that are out of stock",
+      "expected_tables": ["products", "inventory"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT p.* FROM products p JOIN inventory i ON p.product_id = i.product_id WHERE i.quantity = 0",
+      "validation": "has_where"
+    },
+    {
+      "id": "CF005",
+      "category": "complex_filter",
+      "question": "Show active users who have placed orders",
+      "expected_tables": ["users", "orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT DISTINCT u.* FROM users u JOIN orders o ON u.user_id = o.user_id WHERE u.is_active = 1",
+      "validation": "has_where,has_join"
+    },
+
+    {
+      "id": "RK001",
+      "category": "ranking",
+      "question": "Top 5 most expensive products",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM products ORDER BY price DESC LIMIT 5",
+      "validation": "has_order_by,has_limit"
+    },
+    {
+      "id": "RK002",
+      "category": "ranking",
+      "question": "Top 10 customers by total spending",
+      "expected_tables": ["users", "orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT u.user_id, u.first_name, u.last_name, SUM(o.total_amount) as total FROM users u JOIN orders o ON u.user_id = o.user_id GROUP BY u.user_id ORDER BY total DESC LIMIT 10",
+      "validation": "has_order_by,has_limit,has_join"
+    },
+    {
+      "id": "RK003",
+      "category": "ranking",
+      "question": "5 newest orders",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM orders ORDER BY created_at DESC LIMIT 5",
+      "validation": "has_order_by,has_limit"
+    },
+    {
+      "id": "RK004",
+      "category": "ranking",
+      "question": "Top 3 best selling products",
+      "expected_tables": ["products", "order_items"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT p.*, SUM(oi.quantity) as sold FROM products p JOIN order_items oi ON p.product_id = oi.product_id GROUP BY p.product_id ORDER BY sold DESC LIMIT 3",
+      "validation": "has_order_by,has_limit,has_join"
+    },
+    {
+      "id": "RK005",
+      "category": "ranking",
+      "question": "Least popular categories by product count",
+      "expected_tables": ["categories", "products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT c.*, COUNT(p.product_id) as count FROM categories c LEFT JOIN products p ON c.category_id = p.category_id GROUP BY c.category_id ORDER BY count ASC LIMIT 5",
+      "validation": "has_order_by,has_limit"
+    },
+
+    {
+      "id": "TR001",
+      "category": "time_range",
+      "question": "Orders from last month",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM orders WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)",
+      "validation": "has_date_filter"
+    },
+    {
+      "id": "TR002",
+      "category": "time_range",
+      "question": "Users registered this year",
+      "expected_tables": ["users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM users WHERE YEAR(created_at) = YEAR(CURDATE())",
+      "validation": "has_date_filter"
+    },
+    {
+      "id": "TR003",
+      "category": "time_range",
+      "question": "Revenue for the last 7 days",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT SUM(total_amount) FROM orders WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
+      "validation": "has_date_filter"
+    },
+    {
+      "id": "TR004",
+      "category": "time_range",
+      "question": "Orders between January and March 2024",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM orders WHERE created_at BETWEEN '2024-01-01' AND '2024-03-31'",
+      "validation": "has_date_filter"
+    },
+    {
+      "id": "TR005",
+      "category": "time_range",
+      "question": "Monthly order count for this year",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT MONTH(created_at) as month, COUNT(*) FROM orders WHERE YEAR(created_at) = YEAR(CURDATE()) GROUP BY MONTH(created_at)",
+      "validation": "has_date_filter,has_group_by"
+    },
+
+    {
+      "id": "VN001",
+      "category": "vietnamese",
+      "question": "Có bao nhiêu người dùng?",
+      "expected_tables": ["users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT COUNT(*) FROM users",
+      "validation": "single_value"
+    },
+    {
+      "id": "VN002",
+      "category": "vietnamese",
+      "question": "Hiển thị 5 sản phẩm đắt nhất",
+      "expected_tables": ["products"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM products ORDER BY price DESC LIMIT 5",
+      "validation": "has_order_by,has_limit"
+    },
+    {
+      "id": "VN003",
+      "category": "vietnamese",
+      "question": "Tổng doanh thu tháng này",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT SUM(total_amount) FROM orders WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())",
+      "validation": "has_date_filter"
+    },
+    {
+      "id": "VN004",
+      "category": "vietnamese",
+      "question": "Danh sách khách hàng mới trong tuần này",
+      "expected_tables": ["users"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM users WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
+      "validation": "has_date_filter"
+    },
+    {
+      "id": "VN005",
+      "category": "vietnamese",
+      "question": "Top 10 khách hàng chi tiêu nhiều nhất",
+      "expected_tables": ["users", "orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT u.*, SUM(o.total_amount) as total FROM users u JOIN orders o ON u.user_id = o.user_id GROUP BY u.user_id ORDER BY total DESC LIMIT 10",
+      "validation": "has_order_by,has_limit,has_join"
+    },
+    {
+      "id": "VN006",
+      "category": "vietnamese",
+      "question": "Đơn hàng nào có giá trị lớn nhất?",
+      "expected_tables": ["orders"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT * FROM orders ORDER BY total_amount DESC LIMIT 1",
+      "validation": "has_order_by,has_limit"
+    },
+    {
+      "id": "VN007",
+      "category": "vietnamese",
+      "question": "Số lượng sản phẩm theo danh mục",
+      "expected_tables": ["products", "categories"],
+      "expected_type": "SELECT",
+      "gold_sql": "SELECT c.name, COUNT(p.product_id) FROM categories c LEFT JOIN products p ON c.category_id = p.category_id GROUP BY c.category_id",
+      "validation": "has_group_by,has_join"
+    },
+
+    {
+      "id": "EC001",
+      "category": "edge_case",
+      "question": "Show me everything",
+      "expected_tables": [],
+      "expected_type": "AMBIGUOUS",
+      "gold_sql": null,
+      "validation": "low_confidence"
+    },
+    {
+      "id": "EC002",
+      "category": "edge_case",
+      "question": "users orders products",
+      "expected_tables": ["users", "orders", "products"],
+      "expected_type": "AMBIGUOUS",
+      "gold_sql": null,
+      "validation": "low_confidence"
+    },
+    {
+      "id": "EC003",
+      "category": "edge_case",
+      "question": "What is 2 + 2?",
+      "expected_tables": [],
+      "expected_type": "NON_QUERY",
+      "gold_sql": null,
+      "validation": "non_query_detected"
+    },
+    {
+      "id": "EC004",
+      "category": "edge_case",
+      "question": "Delete all users",
+      "expected_tables": ["users"],
+      "expected_type": "DANGEROUS",
+      "gold_sql": null,
+      "validation": "blocked"
+    },
+    {
+      "id": "EC005",
+      "category": "edge_case",
+      "question": "DROP TABLE users",
+      "expected_tables": ["users"],
+      "expected_type": "DANGEROUS",
+      "gold_sql": null,
+      "validation": "blocked"
+    },
+
+    {
+      "id": "NQ001",
+      "category": "non_query",
+      "question": "Hello",
+      "expected_tables": [],
+      "expected_type": "GREETING",
+      "gold_sql": null,
+      "validation": "greeting_detected"
+    },
+    {
+      "id": "NQ002",
+      "category": "non_query",
+      "question": "Xin chào",
+      "expected_tables": [],
+      "expected_type": "GREETING",
+      "gold_sql": null,
+      "validation": "greeting_detected"
+    },
+    {
+      "id": "NQ003",
+      "category": "non_query",
+      "question": "Thank you",
+      "expected_tables": [],
+      "expected_type": "GREETING",
+      "gold_sql": null,
+      "validation": "greeting_detected"
+    },
+    {
+      "id": "NQ004",
+      "category": "non_query",
+      "question": "Cảm ơn bạn",
+      "expected_tables": [],
+      "expected_type": "GREETING",
+      "gold_sql": null,
+      "validation": "greeting_detected"
+    },
+    {
+      "id": "NQ005",
+      "category": "non_query",
+      "question": "How are you?",
+      "expected_tables": [],
+      "expected_type": "GREETING",
+      "gold_sql": null,
+      "validation": "greeting_detected"
+    },
+    {
+      "id": "NQ006",
+      "category": "non_query",
+      "question": "Bạn có thể giúp tôi không?",
+      "expected_tables": [],
+      "expected_type": "HELP",
+      "gold_sql": null,
+      "validation": "help_detected"
+    }
+  ]
+}
